@@ -4,6 +4,8 @@ from typing import Any, AsyncGenerator, Dict, Mapping, Sequence
 
 import pytest
 from flux0_core.agents import Agent, AgentId, AgentType
+from flux0_core.contextual_correlator import ContextualCorrelator
+from flux0_core.logging import Logger, StdoutLogger
 from flux0_stream.emitter.api import EventEmitter
 from flux0_stream.emitter.memory import MemoryEventEmitter
 from flux0_stream.store.memory import MemoryEventStore
@@ -11,12 +13,24 @@ from flux0_stream.types import EmittedEvent
 
 
 @pytest.fixture
-async def event_emitter() -> AsyncGenerator[EventEmitter, None]:
+def contextual_correlator() -> ContextualCorrelator:
+    return ContextualCorrelator()
+
+
+@pytest.fixture
+def logger(contextual_correlator: ContextualCorrelator) -> Logger:
+    return StdoutLogger(correlator=contextual_correlator)
+
+
+@pytest.fixture
+async def event_emitter(logger: Logger) -> AsyncGenerator[EventEmitter, None]:
     """Provide a properly initialized EventEmitter instance using AsyncExitStack for clean resource management."""
 
     async with AsyncExitStack() as stack:
         store = await stack.enter_async_context(MemoryEventStore())
-        emitter = await stack.enter_async_context(MemoryEventEmitter(event_store=store))
+        emitter = await stack.enter_async_context(
+            MemoryEventEmitter(event_store=store, logger=logger)
+        )
 
         yield emitter
 

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Self, Union
 
 from flux0_core.agents import AgentId
+from flux0_core.logging import Logger
 from flux0_core.sessions import EventId, SessionId, StatusEventData
 from flux0_stream.emitter.api import (
     EventEmitter,
@@ -33,9 +34,10 @@ class MemoryEventEmitter(EventEmitter):
     - Ensures **clean shutdown**, processing remaining messages before stopping.
     """
 
-    def __init__(self, event_store: EventStore) -> None:
+    def __init__(self, event_store: EventStore, logger: Logger) -> None:
         """Initializes the event emitter with an event queue and subscriber management."""
         self.event_store: EventStore = event_store
+        self.logger: Logger = logger
 
         # Queue to process events asynchronously
         self.queue: asyncio.Queue[QueueMessage] = asyncio.Queue()
@@ -93,7 +95,9 @@ class MemoryEventEmitter(EventEmitter):
             except asyncio.CancelledError:
                 break  # Exit cleanly on shutdown
             except Exception as e:
-                print(f"Error processing message: {e}")  # Log errors safely
+                self.logger.error(
+                    f"Error processing message: {e}", exc_info=True
+                )  # Log errors safely
             finally:
                 if message is not None:
                     self.queue.task_done()  # Only call task_done if a message was actually retrieved
@@ -147,7 +151,7 @@ class MemoryEventEmitter(EventEmitter):
 
     async def shutdown(self) -> None:
         """Shuts down the event emitter, ensuring all queued events are processed."""
-        print("Shutting down EventEmitter, processing remaining messages...")
+        self.logger.debug("Shutting down EventEmitter, processing remaining messages...")
 
         # Cancel the worker task
         self._worker_task.cancel()
@@ -159,7 +163,7 @@ class MemoryEventEmitter(EventEmitter):
         # Process remaining messages in queue
         try:
             while not self.queue.empty():
-                print("Processing remaining messages...")
+                self.logger.debug("Processing remaining messages...")
                 message: QueueMessage = self.queue.get_nowait()
                 if isinstance(message.data, EventChunk):
                     await self._process_event_chunk(message.correlation_id, message.data)
@@ -173,9 +177,9 @@ class MemoryEventEmitter(EventEmitter):
         except asyncio.QueueEmpty:
             pass  # Safe exit if the queue is empty
         except Exception as e:
-            print(f"Error processing remaining messages: {e}")
+            self.logger.error(f"Error processing remaining messages: {e}", exc_info=True)
 
-        print("EventEmitter shutdown complete.")
+        self.logger.debug("EventEmitter shutdown complete.")
 
     async def __aenter__(self) -> Self:
         """Allows the event emitter to be used with an async context manager."""
