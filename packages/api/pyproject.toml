@@ -1,0 +1,23 @@
+[project]
+name = "flux0-api"
+version = "0.0.1"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.8",
+    "flux0-core",
+    "flux0-stream",
+    "python-dateutil>=2.9.0.post0",
+]
+
+[tool.uv.sources]
+flux0-core = { workspace = true }
+flux0-stream = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "types-python-dateutil>=2.9.0.20241206",
+]
