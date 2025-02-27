@@ -155,7 +155,6 @@ VALID_SERVER_SOURCES: set[EventSource] = {"ai_agent"}
 class Event:
     id: EventId
     source: EventSource
-    # TODO change to type
     type: EventType
     offset: int
     correlation_id: str
