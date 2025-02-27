@@ -6,7 +6,7 @@ from flux0_core.agents import Agent
 from flux0_core.sessions import TOOL_CALL_PART_TYPE, EventId, StatusEventData
 from flux0_core.types import ensure_json_serializable
 from flux0_stream.emitter.api import EventEmitter
-from flux0_stream.types import EventChunk, JsonPatchOperation
+from flux0_stream.types import ChunkEvent, JsonPatchOperation
 from langchain_core.messages import AIMessage, ToolMessage, message_chunk_to_message
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.runnables.schema import StreamEvent
@@ -118,7 +118,7 @@ async def handle_event(
                 )
                 run_ctx.set_typing_emitted(run_id, True)
             # TODO this is going to work only on strings, we need to handle structs as well
-            cec = EventChunk(
+            cec = ChunkEvent(
                 correlation_id=correlation_id,
                 seq=0,
                 event_id=EventId(run_id),
@@ -225,7 +225,7 @@ async def handle_event(
                             }
                         )
 
-            cec = EventChunk(
+            cec = ChunkEvent(
                 correlation_id=correlation_id,
                 seq=0,
                 event_id=EventId(run_id),
@@ -243,7 +243,7 @@ async def handle_event(
                 # at this point we take care only of "args"
                 if not invalid_tool_call["args"]:
                     continue
-                cec = EventChunk(
+                cec = ChunkEvent(
                     correlation_id=correlation_id,
                     seq=0,
                     event_id=EventId(run_id),
@@ -369,7 +369,7 @@ async def handle_event(
         )
 
         await event_emitter.enqueue_event_chunk(
-            EventChunk(
+            ChunkEvent(
                 correlation_id=correlation_id,
                 seq=0,
                 event_id=EventId(event["run_id"]),

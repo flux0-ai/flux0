@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 from typing import Awaitable, Callable, Optional
 
 from flux0_core.sessions import EventId, StatusEventData
-from flux0_stream.types import EmittedEvent, EventChunk
+from flux0_stream.types import ChunkEvent, EmittedEvent
 
-ProcessedSubscriber = Callable[[EventChunk], Awaitable[None]]
+ProcessedSubscriber = Callable[[ChunkEvent], Awaitable[None]]
 FinalSubscriber = Callable[[EmittedEvent], Awaitable[None]]
 
 
@@ -23,7 +23,7 @@ class EventEmitter(ABC):
         ...
 
     @abstractmethod
-    async def enqueue_event_chunk(self, chunk: EventChunk) -> None:
+    async def enqueue_event_chunk(self, chunk: ChunkEvent) -> None:
         """Accepts an implementation of event chunk and processes it."""
         ...
 

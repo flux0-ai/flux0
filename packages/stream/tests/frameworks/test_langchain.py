@@ -11,7 +11,7 @@ from flux0_stream.frameworks.langchain import (
     filter_and_map_events,
     handle_event,
 )
-from flux0_stream.types import EmittedEvent, EventChunk
+from flux0_stream.types import ChunkEvent, EmittedEvent
 from langchain_core.load import loads
 from langchain_core.runnables.schema import StreamEvent
 from tests.conftest import assert_emitted_event
@@ -52,7 +52,7 @@ async def test_langchain_streaming(
 
         final_events.append(final_event)
 
-    async def processed_subscriber(event_chunk: EventChunk) -> None:
+    async def processed_subscriber(event_chunk: ChunkEvent) -> None:
         # TODO test
         ...
 

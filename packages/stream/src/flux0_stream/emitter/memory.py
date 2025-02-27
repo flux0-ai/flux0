@@ -11,7 +11,7 @@ from flux0_stream.emitter.api import (
     ProcessedSubscriber,
 )
 from flux0_stream.store.api import EventStore
-from flux0_stream.types import EmittedEvent, EventChunk
+from flux0_stream.types import ChunkEvent, EmittedEvent
 
 
 @dataclass
@@ -20,7 +20,7 @@ class QueueMessage:
 
     correlation_id: str
     event_id: Optional[EventId]
-    data: Union[EventChunk, StatusEventData]
+    data: Union[ChunkEvent, StatusEventData]
 
 
 class MemoryEventEmitter(EventEmitter):
@@ -58,7 +58,7 @@ class MemoryEventEmitter(EventEmitter):
         """Enqueues a status event for a specific execution (correlation_id)."""
         await self.queue.put(QueueMessage(correlation_id, event_id, data))
 
-    async def enqueue_event_chunk(self, chunk: EventChunk) -> None:
+    async def enqueue_event_chunk(self, chunk: ChunkEvent) -> None:
         """Enqueues an event chunk for processing."""
         await self.queue.put(QueueMessage(chunk.correlation_id, chunk.event_id, chunk))
 
@@ -86,7 +86,7 @@ class MemoryEventEmitter(EventEmitter):
             message: Optional[QueueMessage] = None
             try:
                 message = await self.queue.get()
-                if isinstance(message.data, EventChunk):
+                if isinstance(message.data, ChunkEvent):
                     await self._process_event_chunk(message.correlation_id, message.data)
                 elif isinstance(message.data, dict) and "status" in message.data:
                     await self._process_status_event(
@@ -102,7 +102,7 @@ class MemoryEventEmitter(EventEmitter):
                 if message is not None:
                     self.queue.task_done()  # Only call task_done if a message was actually retrieved
 
-    async def _process_event_chunk(self, correlation_id: str, chunk: EventChunk) -> None:
+    async def _process_event_chunk(self, correlation_id: str, chunk: ChunkEvent) -> None:
         """Processes an event chunk and notifies processed subscribers."""
 
         # Ensure the patch is in `JsonPatch` format
@@ -165,7 +165,7 @@ class MemoryEventEmitter(EventEmitter):
             while not self.queue.empty():
                 self.logger.debug("Processing remaining messages...")
                 message: QueueMessage = self.queue.get_nowait()
-                if isinstance(message.data, EventChunk):
+                if isinstance(message.data, ChunkEvent):
                     await self._process_event_chunk(message.correlation_id, message.data)
                 elif isinstance(message.data, dict) and "status" in message.data:
                     await self._process_status_event(

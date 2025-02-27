@@ -3,7 +3,6 @@ import json
 from typing import Dict, List, MutableMapping, Optional, Self, TypedDict, Union, cast
 
 from flux0_core.agents import AgentId
-from flux0_stream.patches import ensure_structure_for_patch
 from flux0_core.sessions import (
     ContentPart,
     EventId,
@@ -17,8 +16,9 @@ from flux0_core.sessions import (
     ToolResult,
 )
 from flux0_core.types import JSONSerializable
+from flux0_stream.patches import ensure_structure_for_patch
 from flux0_stream.store.api import EventStore
-from flux0_stream.types import EmittedEvent, EventChunk
+from flux0_stream.types import ChunkEvent, EmittedEvent
 from jsonpatch import JsonPatch, apply_patch
 
 
@@ -62,7 +62,7 @@ class MemoryEventStore(EventStore):
         self.chunk_index_tracker.clear()
         self.finalized_events.clear
 
-    async def add_chunk(self, chunk: EventChunk) -> None:
+    async def add_chunk(self, chunk: ChunkEvent) -> None:
         """
         Receives a patch chunk and applies it immediately if it's in order.
         If out of order, stores it in a buffer for later application.

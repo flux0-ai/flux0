@@ -4,7 +4,7 @@ import time
 import pytest
 from flux0_core.sessions import EventId
 from flux0_stream.emitter.api import EventEmitter
-from flux0_stream.types import AddOperation, EventChunk
+from flux0_stream.types import AddOperation, ChunkEvent
 
 # NOTE:
 # The following fixture is expected to be provided by test configuration (e.g. via conftest.py).
@@ -33,16 +33,16 @@ from flux0_stream.types import AddOperation, EventChunk
 async def test_processed_subscriber_called_on_event_chunk(
     event_emitter: EventEmitter,
 ) -> None:
-    received_chunks: list[EventChunk] = []
+    received_chunks: list[ChunkEvent] = []
 
-    async def processed_subscriber(chunk: EventChunk) -> None:
+    async def processed_subscriber(chunk: ChunkEvent) -> None:
         received_chunks.append(chunk)
 
     correlation_id = "test_corr_processed"
     event_emitter.subscribe_processed(correlation_id, processed_subscriber)
     # Create an EventChunk that uses a patch operation with an append (indicated by path ending with "/-")
     patch: AddOperation = AddOperation(op="add", path="/age", value=30)
-    chunk = EventChunk(
+    chunk = ChunkEvent(
         correlation_id=correlation_id,
         event_id=EventId("event1"),
         seq=0,

@@ -53,7 +53,7 @@ JsonPatchOperation = Union[ReplaceOperation, AddOperation]
 
 
 @dataclass(frozen=True)
-class EventChunk(ABC):
+class ChunkEvent(ABC):
     """Represents an incremental update using JSON Patch operations.
 
     Attributes:
