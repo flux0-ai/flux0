@@ -5,6 +5,7 @@ requires-python = ">=3.13"
 members = [
     "flux0-api",
     "flux0-core",
+    "flux0-nanodb",
     "flux0-stream",
 ]
 
@@ -166,6 +167,7 @@ version = "0.0.1"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "aiorwlock" },
+    { name = "flux0-nanodb" },
     { name = "nanoid" },
     { name = "structlog" },
 ]
@@ -173,12 +175,28 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiorwlock", specifier = ">=1.5.0" },
+    { name = "flux0-nanodb", editable = "packages/nanodb" },
     { name = "nanoid", specifier = ">=2.0.0" },
     { name = "structlog", specifier = ">=25.1.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = []
+
+[[package]]
+name = "flux0-nanodb"
+version = "0.0.1"
+source = { editable = "packages/nanodb" }
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest-asyncio" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest-asyncio", specifier = ">=0.25.3" }]
 
 [[package]]
 name = "flux0-stream"

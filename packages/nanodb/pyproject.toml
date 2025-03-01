@@ -1,0 +1,20 @@
+[project]
+name = "flux0-nanodb"
+version = "0.0.1"
+requires-python = ">=3.13"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = [
+  "."
+]
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=0.25.3",
+]
