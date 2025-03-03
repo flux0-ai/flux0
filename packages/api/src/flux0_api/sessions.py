@@ -2,6 +2,7 @@ from typing import Any, Callable, Coroutine
 
 from fastapi import APIRouter, HTTPException, status
 from flux0_core.agents import AgentStore
+from flux0_core.sessions import SessionStore
 
 from flux0_api.auth import AuthedUser
 from flux0_api.common import apigen_config, example_json_content
@@ -11,6 +12,7 @@ from flux0_api.types_session import (
     ConsumptionOffsetsDTO,
     SessionCreationParamsDTO,
     SessionDTO,
+    SessionIdPath,
     session_example,
 )
 
@@ -75,3 +77,48 @@ def mount_create_session_route(
         )
 
     return create_session_route
+
+
+def mount_get_session_route(
+    router: APIRouter,
+    authedUser: AuthedUser,
+    session_store: SessionStore,
+) -> Callable[[SessionIdPath], Coroutine[Any, Any, SessionDTO]]:
+    @router.get(
+        "/{session_id}",
+        operation_id="read_session",
+        response_model=SessionDTO,
+        response_model_exclude_none=True,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "Session details retrieved successfully",
+                "content": {"application/json": {"example": session_example}},
+            },
+            status.HTTP_404_NOT_FOUND: {"description": "Session not found"},
+        },
+        **apigen_config(group_name=API_GROUP, method_name="retrieve"),
+    )
+    async def read_session(
+        session_id: SessionIdPath,
+    ) -> SessionDTO:
+        """Retrieve details of a session by its unique identifier"""
+
+        session = await session_store.read_session(session_id=session_id)
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Session with ID {session_id} not found",
+            )
+
+        return SessionDTO(
+            id=session.id,
+            agent_id=session.agent_id,
+            user_id=session.user_id,
+            title=session.title,
+            consumption_offsets=ConsumptionOffsetsDTO(
+                client=session.consumption_offsets["client"],
+            ),
+            created_at=session.created_at,
+        )
+
+    return read_session

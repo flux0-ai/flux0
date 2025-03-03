@@ -12,7 +12,7 @@ from flux0_core.agents import Agent, AgentId, AgentStore, AgentType
 from flux0_core.background_tasks_service import BackgroundTaskService
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.logging import ContextualLogger, Logger
-from flux0_core.sessions import SessionStore
+from flux0_core.sessions import Session, SessionId, SessionStore
 from flux0_core.storage.nanodb_memory import (
     AgentDocumentStore,
     SessionDocumentStore,
@@ -51,10 +51,23 @@ def user() -> User:
 @pytest.fixture
 def agent() -> Agent:
     return Agent(
-        id=AgentId("1q2w3e4r5t"),
+        id=AgentId("vUfk4PgjTm"),
         type=AgentType("test"),
         name="Test Agent",
         description="A test agent",
+        created_at=datetime.now(timezone.utc),
+    )
+
+
+@pytest.fixture
+def session() -> Session:
+    return Session(
+        id=SessionId("zv3h4j5Fjv"),
+        agent_id=AgentId("vUfk4PgjTm"),
+        user_id=UserId("v9pg5Zv3h4"),
+        mode="auto",
+        title="Test Session",
+        consumption_offsets=0,
         created_at=datetime.now(timezone.utc),
     )
 

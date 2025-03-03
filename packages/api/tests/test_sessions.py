@@ -1,16 +1,18 @@
 import asyncio
+from dataclasses import asdict
 from datetime import timezone
 from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import APIRouter, HTTPException
 from flux0_api.session_service import SessionService
-from flux0_api.sessions import mount_create_session_route
+from flux0_api.sessions import mount_create_session_route, mount_get_session_route
 from flux0_api.types_session import SessionCreationParamsDTO, SessionDTO
 from flux0_core.agent_runners.api import AgentRunner
 from flux0_core.agent_runners.context import Context
 from flux0_core.agents import Agent, AgentId, AgentStore
 from flux0_core.ids import gen_id
+from flux0_core.sessions import Session, SessionId, SessionStore
 from flux0_core.users import User
 
 from .conftest import MockAgentRunnerFactory
@@ -87,7 +89,7 @@ async def test_create_session_with_greeting_success(
     assert args[0] == expected_context
 
 
-async def test_create_session_agent_not_found(
+async def test_create_session_agent_not_found_failure(
     user: User, agent_store: AgentStore, session_service: SessionService
 ) -> None:
     router = APIRouter()
@@ -96,3 +98,26 @@ async def test_create_session_agent_not_found(
     with pytest.raises(HTTPException) as exc_info:
         await create_session_route(params, False)
     assert exc_info.value.status_code == 400
+
+
+async def test_get_session_success(
+    user: User, session: Session, session_store: SessionStore
+) -> None:
+    session = await session_store.create_session(user_id=session.user_id, agent_id=session.agent_id)
+    router = APIRouter()
+
+    get_session_route = mount_get_session_route(router, user, session_store)
+    rs = await get_session_route(session.id)
+
+    session_dict = asdict(session)
+    session_dict.pop("mode")
+    assert rs.model_dump() == session_dict
+
+
+async def test_get_session_not_found_failure(user: User, session_store: SessionStore) -> None:
+    router = APIRouter()
+
+    get_session_route = mount_get_session_route(router, user, session_store)
+    with pytest.raises(HTTPException) as exc_info:
+        await get_session_route(SessionId(gen_id()))
+    assert exc_info.value.status_code == 404
