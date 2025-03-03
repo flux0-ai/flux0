@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Union
 
 from flux0_core.agent_runners.api import AgentRunnerFactory
 from flux0_core.agent_runners.context import Context
@@ -7,7 +7,17 @@ from flux0_core.agents import Agent
 from flux0_core.background_tasks_service import BackgroundTaskService
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.ids import gen_id
-from flux0_core.sessions import Session, SessionId, SessionStore
+from flux0_core.sessions import (
+    Event,
+    EventSource,
+    EventType,
+    MessageEventData,
+    Session,
+    SessionId,
+    SessionStore,
+    StatusEventData,
+    ToolEventData,
+)
 from flux0_core.users import UserId
 from flux0_stream.emitter.api import EventEmitter
 
@@ -61,6 +71,41 @@ class SessionService:
         )
 
         return self._correlator.correlation_id
+
+    async def cancel_processing_session_task(self, session_id: SessionId) -> None:
+        await self._background_task_service.cancel(
+            tag=f"process-session({session_id})", reason="user-cancel"
+        )
+
+    async def post_event(
+        self,
+        session: Session,
+        agent: Agent,
+        type: EventType,
+        data: Union[MessageEventData, StatusEventData, ToolEventData],
+        source: EventSource = "user",
+        trigger_processing: bool = True,
+    ) -> Event:
+        if trigger_processing:
+            with self._correlator.scope(gen_id()):
+                event = await self._session_store.create_event(
+                    session_id=session.id,
+                    source=source,
+                    type=type,
+                    correlation_id=self._correlator.correlation_id,
+                    data=data,
+                )
+                await self.dispatch_processing_task(session, agent, self._correlator.correlation_id)
+        else:
+            event = await self._session_store.create_event(
+                session_id=session.id,
+                source=source,
+                type=type,
+                correlation_id=self._correlator.correlation_id,
+                data=data,
+            )
+
+        return event
 
     async def _process_session(self, session: Session, agent: Agent) -> None:
         runner = self._agent_runner_factory.create_runner(agent.type)

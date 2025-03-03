@@ -1,6 +1,6 @@
 from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import datetime, timezone
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Generator
 
 import pytest
 from fastapi import FastAPI
@@ -28,8 +28,10 @@ from lagom import Container
 
 
 @pytest.fixture
-def correlator() -> ContextualCorrelator:
-    return ContextualCorrelator()
+def correlator() -> Generator[ContextualCorrelator]:
+    c = ContextualCorrelator()
+    with c.scope("test:ctx"):
+        yield c
 
 
 @pytest.fixture
@@ -67,7 +69,7 @@ def session() -> Session:
         user_id=UserId("v9pg5Zv3h4"),
         mode="auto",
         title="Test Session",
-        consumption_offsets=0,
+        consumption_offsets={},
         created_at=datetime.now(timezone.utc),
     )
 

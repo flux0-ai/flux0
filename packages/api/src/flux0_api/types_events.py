@@ -358,6 +358,7 @@ class EventDTO(
         Union[MessageEventDataDTO, StatusEventDataDTO, ToolEventDataDTO],
         Field(discriminator="type"),
     ]
+    deleted: bool
     metadata: Optional[Mapping[str, JSONSerializableDTO]] = None
     created_at: EventCreatedAtField
 
@@ -374,3 +375,34 @@ class EventsDTO(DefaultBaseModel):
     List of events that occurred within a session.
     """
     data: Sequence[EventDTO]
+
+
+# ===========================
+# Create Event
+# ===========================
+
+SessionEventCreationParamsContentField: TypeAlias = Annotated[
+    str,
+    Field(
+        description="Event payload data, format depends on kind",
+        examples=[user_input_content_example],
+    ),
+]
+
+
+event_creation_params_example: ExampleJson = {
+    "kind": "message",
+    "source": "user",
+    "content": user_input_content_example,
+}
+
+
+class EventCreationParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": event_creation_params_example},
+):
+    """Parameters for creating a new event within a session."""
+
+    type: EventTypeDTO
+    source: EventSourceDTO
+    content: Optional[SessionEventCreationParamsContentField] = None

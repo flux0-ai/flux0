@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Annotated, Optional, Sequence, TypeAlias
 
 import dateutil.parser
@@ -144,5 +145,20 @@ AllowGreetingQuery: TypeAlias = Annotated[
     bool,
     Query(
         description="Indicates if the agent is permitted to send an initial greeting",
+    ),
+]
+
+
+class Moderation(Enum):
+    """Content moderation settings."""
+
+    # AUTO = "auto"
+    NONE = "none"
+
+
+ModerationQuery: TypeAlias = Annotated[
+    Moderation,
+    Query(
+        description="Content moderation level for the event",
     ),
 ]
