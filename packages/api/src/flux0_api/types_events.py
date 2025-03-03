@@ -6,10 +6,10 @@ import time
 from dataclasses import field
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Literal, Mapping, Optional, Sequence, TypeAlias, Union
+from typing import Annotated, List, Literal, Mapping, Optional, Sequence, TypeAlias, Union
 
 import dateutil.parser
-from fastapi import Path
+from fastapi import Path, Query
 from flux0_core.sessions import EventId, ToolCallPartType, ToolCallResultType
 from pydantic import Field
 
@@ -406,3 +406,31 @@ class EventCreationParamsDTO(
     type: EventTypeDTO
     source: EventSourceDTO
     content: Optional[SessionEventCreationParamsContentField] = None
+
+
+# ===========================
+# List events
+# ===========================
+MinOffsetQuery: TypeAlias = Annotated[
+    int,
+    Query(
+        description="Return events with an offset greater than or equal to this value",
+        examples=[0, 15],
+    ),
+]
+
+CorrelationIdQuery: TypeAlias = Annotated[
+    str,
+    Query(
+        description="ID linking related events together",
+        examples=["RID(lyH-sVmwJO)::Y8oBzYT4CQ"],
+    ),
+]
+
+TypesQuery: TypeAlias = Annotated[
+    List[EventTypeDTO],
+    Query(
+        description="Filter events by specified kinds (comma-separated values)",
+        examples=["message,tool", "message,custom"],
+    ),
+]

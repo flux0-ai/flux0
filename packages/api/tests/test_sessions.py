@@ -1,7 +1,7 @@
 import asyncio
 import json
 from dataclasses import asdict
-from datetime import timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock
 
@@ -13,15 +13,32 @@ from flux0_api.sessions import (
     mount_create_event_and_stream_route,
     mount_create_session_route,
     mount_get_session_route,
+    mount_list_session_events_route,
 )
-from flux0_api.types_events import EventCreationParamsDTO, EventSourceDTO, EventTypeDTO
+from flux0_api.types_events import (
+    ContentPartDTO,
+    EventCreationParamsDTO,
+    EventDTO,
+    EventSourceDTO,
+    EventTypeDTO,
+    MessageEventDataDTO,
+)
 from flux0_api.types_session import SessionCreationParamsDTO, SessionDTO
 from flux0_core.agent_runners.api import AgentRunner
 from flux0_core.agent_runners.context import Context
 from flux0_core.agents import Agent, AgentId, AgentStore
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.ids import gen_id
-from flux0_core.sessions import Session, SessionId, SessionStore, StatusEventData
+from flux0_core.sessions import (
+    ContentPart,
+    EventId,
+    MessageEventData,
+    Participant,
+    Session,
+    SessionId,
+    SessionStore,
+    StatusEventData,
+)
 from flux0_core.users import User, UserStore
 from flux0_stream.emitter.api import EventEmitter
 
@@ -54,7 +71,6 @@ async def test_create_session_success(
     assert result.title == "Test session"
     # Check that the consumption_offsets is set correctly.
     assert result.consumption_offsets.client == 0
-    from datetime import datetime
 
     assert result.created_at < datetime.now(timezone.utc)
 
@@ -89,7 +105,6 @@ async def test_create_session_with_greeting_success(
     assert result.title == "Test session"
     # Check that the consumption_offsets is set correctly.
     assert result.consumption_offsets.client == 0
-    from datetime import datetime
 
     assert result.created_at < datetime.now(timezone.utc)
 
@@ -210,3 +225,88 @@ async def test_create_event_and_stream_success(
     assert e1["source"] == "ai_agent"
     assert e1["correlation_id"].startswith(correlator.correlation_id)
     assert e1["data"]["status"] == "typing"
+
+
+async def test_list_session_events_success(
+    correlator: ContextualCorrelator, user: User, session: Session, session_store: SessionStore
+) -> None:
+    router = APIRouter()
+    session = await session_store.create_session(user_id=session.user_id, agent_id=session.agent_id)
+    await session_store.create_event(
+        session_id=session.id,
+        source="user",
+        type="message",
+        correlation_id=correlator.correlation_id,
+        data=MessageEventData(
+            type="message",
+            parts=[ContentPart(type="content", content="Hello World!")],
+            participant=Participant(id=user.id, name=user.name),
+        ),
+    )
+    list_session_events_route = mount_list_session_events_route(router, user, session_store)
+    response = await list_session_events_route(session.id, None, None, None, None)
+    events = response.data
+    assert len(events) == 1
+    e1 = events[0]
+    assert e1.id is not None
+    assert (
+        e1.model_dump()
+        == EventDTO(
+            id=EventId(e1.id),
+            correlation_id=correlator.correlation_id,
+            type=EventTypeDTO.MESSAGE,
+            source=EventSourceDTO.USER,
+            deleted=False,
+            offset=0,
+            data=MessageEventDataDTO(
+                type="message",
+                parts=[ContentPartDTO(type="content", content="Hello World!")],
+                participant={"id": user.id, "name": user.name},
+            ),
+            created_at=e1.created_at,
+        ).model_dump()
+    )
+
+    # filter by offset
+    response = await list_session_events_route(session.id, 1, None, None, None)
+    assert response.data == []
+
+    # filter by source
+    response = await list_session_events_route(
+        session.id, None, EventSourceDTO.AI_AGENT, None, None
+    )
+    assert response.data == []
+
+    # filter by type
+    response = await list_session_events_route(session.id, None, EventSourceDTO.USER, None, None)
+    assert len(response.data) == 1
+
+    response = await list_session_events_route(session.id, None, None, "non_existing_corr_id", None)
+    assert response.data == []
+
+    # filter by correlation_id
+    response = await list_session_events_route(
+        session.id, None, None, correlator.correlation_id, None
+    )
+    assert len(response.data) == 1
+
+    # filter by event types
+    response = await list_session_events_route(
+        session.id, None, None, "non_existing_corr_id", [EventTypeDTO.TOOL]
+    )
+    assert response.data == []
+
+    response = await list_session_events_route(
+        session.id, None, None, None, [EventTypeDTO.TOOL, EventTypeDTO.MESSAGE]
+    )
+    assert len(response.data) == 1
+
+    # all correct filters
+    response = await list_session_events_route(
+        session.id,
+        0,
+        EventSourceDTO.USER,
+        correlator.correlation_id,
+        [EventTypeDTO.MESSAGE, EventTypeDTO.TOOL],
+    )
+    assert len(response.data) == 1

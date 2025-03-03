@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any, AsyncGenerator, Callable, Coroutine, Set, Union, cast
+from typing import Any, AsyncGenerator, Callable, Coroutine, Optional, Sequence, Set, Union, cast
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -8,6 +8,7 @@ from flux0_core.agents import AgentStore
 from flux0_core.sessions import (
     ContentPart,
     Event,
+    EventType,
     MessageEventData,
     SessionId,
     SessionStore,
@@ -22,10 +23,15 @@ from flux0_api.auth import AuthedUser
 from flux0_api.common import JSONSerializableDTO, apigen_config, example_json_content
 from flux0_api.session_service import SessionService
 from flux0_api.types_events import (
+    CorrelationIdQuery,
     EventCreationParamsDTO,
     EventDTO,
+    EventsDTO,
     EventSourceDTO,
     EventTypeDTO,
+    MinOffsetQuery,
+    TypesQuery,
+    event_example,
 )
 from flux0_api.types_session import (
     AllowGreetingQuery,
@@ -415,3 +421,84 @@ def mount_create_event_and_stream_route(
             )
 
     return create_event_and_stream
+
+
+def mount_list_session_events_route(
+    router: APIRouter, _: AuthedUser, session_store: SessionStore
+) -> Callable[
+    [
+        SessionIdPath,
+        Optional[MinOffsetQuery],
+        Optional[EventSourceDTO],
+        Optional[CorrelationIdQuery],
+        Optional[TypesQuery],
+    ],
+    Coroutine[Any, Any, EventsDTO],
+]:
+    @router.get(
+        "/{session_id}/events",
+        operation_id="list_events",
+        response_model=EventsDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "List of events matching the specified criteria",
+                "content": {"application/json": {"example": [event_example]}},
+            },
+            status.HTTP_404_NOT_FOUND: {
+                "description": "Session not found",
+            },
+            status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                "description": "Validation error in request parameters"
+            },
+            status.HTTP_504_GATEWAY_TIMEOUT: {
+                "description": "Request timeout waiting for new events"
+            },
+        },
+        **apigen_config(group_name=API_GROUP, method_name="list_events"),
+    )
+    async def list_events(
+        session_id: SessionIdPath,
+        min_offset: Optional[MinOffsetQuery] = None,
+        source: Optional[EventSourceDTO] = None,
+        correlation_id: Optional[CorrelationIdQuery] = None,
+        types: Optional[TypesQuery] = None,
+    ) -> EventsDTO:
+        """List events for a session with optional filtering
+
+        Retrieves events that occurred within a session, optionally filtering by source, correlation ID, and types.
+        """
+
+        if not await session_store.read_session(session_id=session_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot list events for non-existent session with ID {session_id}",
+            )
+
+        type_list: Sequence[EventType] = [t.value for t in types] if types else []
+
+        events = await session_store.list_events(
+            session_id=session_id,
+            min_offset=min_offset,
+            source=source.value if source else None,
+            types=type_list,
+            correlation_id=correlation_id,
+        )
+
+        return EventsDTO(
+            data=[
+                EventDTO(
+                    id=e.id,
+                    source=EventSourceDTO(e.source),
+                    type=EventTypeDTO(e.type),
+                    offset=e.offset,
+                    correlation_id=e.correlation_id,
+                    data=cast(JSONSerializableDTO, e.data),
+                    metadata=e.metadata,
+                    deleted=e.deleted,
+                    created_at=e.created_at,
+                )
+                for e in events
+            ]
+        )
+
+    return list_events
