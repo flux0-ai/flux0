@@ -360,3 +360,17 @@ class EventDTO(
     ]
     metadata: Optional[Mapping[str, JSONSerializableDTO]] = None
     created_at: EventCreatedAtField
+
+
+class EventsDTO(DefaultBaseModel):
+    model_config = DEFAULT_MODEL_CONFIG.copy()
+    model_config["json_schema_extra"] = {
+        "example": {
+            "data": [event_example],
+        }
+    }
+
+    """
+    List of events that occurred within a session.
+    """
+    data: Sequence[EventDTO]
