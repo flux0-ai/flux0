@@ -3,7 +3,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import List, Mapping, Optional, Self, Sequence, Union, override
 
-from flux0_core.agents import AgentId
+from flux0_core.agents import Agent, AgentId, AgentStore, AgentType, AgentUpdateParams
 from flux0_core.async_utils import RWLock
 from flux0_core.ids import gen_id
 from flux0_core.sessions import (
@@ -119,6 +119,110 @@ class UserDocumentStore(UserStore):
         params: UserUpdateParams,
     ) -> User:
         raise NotImplementedError
+
+
+#############
+# Agent
+#############
+@dataclass(frozen=True)
+class _AgentDocument(Agent, Document):
+    version: DocumentVersion
+
+
+class AgentDocumentStore(AgentStore):
+    VERSION = DocumentVersion("0.0.1")
+
+    def __init__(self, db: DocumentDatabase):
+        self.db = db
+        self._agent_col: DocumentCollection[_AgentDocument]
+        self._lock = RWLock()
+
+    async def __aenter__(self) -> Self:
+        self._agent_col = await self.db.create_collection("agents", _AgentDocument)
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        exec_tb: Optional[object],
+    ) -> None:
+        pass
+
+    def _serialize_agent(
+        self,
+        agent: Agent,
+    ) -> _AgentDocument:
+        data = asdict(agent)
+        data["id"] = DocumentID(agent.id)
+        data["version"] = self.VERSION
+        return _AgentDocument(**data)
+
+    def _deserialize_agent(
+        self,
+        doc: _AgentDocument,
+    ) -> Agent:
+        data = asdict(doc)
+        data.pop("version")
+        data["id"] = AgentId(doc.id)
+        return Agent(**data)
+
+    @override
+    async def create_agent(
+        self,
+        name: str,
+        type: AgentType,
+        description: Optional[str] = None,
+        created_at: Optional[datetime] = None,
+    ) -> Agent:
+        created_at = created_at or datetime.now(timezone.utc)
+        agent = Agent(
+            id=AgentId(gen_id()),
+            name=name,
+            type=type,
+            description=description,
+            created_at=created_at,
+        )
+        async with self._lock.writer_lock:
+            await self._agent_col.insert_one(document=self._serialize_agent(agent))
+        return agent
+
+    @override
+    async def read_agent(
+        self,
+        agent_id: AgentId,
+    ) -> Optional[Agent]:
+        async with self._lock.reader_lock:
+            result = await self._agent_col.find(Comparison(path="id", op="$eq", value=agent_id))
+            return self._deserialize_agent(result[0]) if result else None
+
+    @override
+    async def list_agents(
+        self,
+        offset: int = 0,
+        limit: int = 10,
+        projection: Optional[List[str]] = None,
+    ) -> Sequence[Agent]:
+        raise NotImplementedError
+
+    @override
+    async def update_agent(
+        self,
+        agent_id: AgentId,
+        params: AgentUpdateParams,
+    ) -> Agent:
+        raise NotImplementedError
+
+    @override
+    async def delete_agent(
+        self,
+        agent_id: AgentId,
+    ) -> bool:
+        async with self._lock.writer_lock:
+            result = await self._agent_col.delete_one(
+                Comparison(path="id", op="$eq", value=agent_id)
+            )
+            return result.deleted_count > 0
 
 
 #############

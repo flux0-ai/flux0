@@ -1,9 +1,10 @@
 # Fixture to provide a DocumentDatabase instance.
 
 import pytest
-from flux0_core.agents import AgentId
+from flux0_core.agents import AgentId, AgentStore, AgentType
 from flux0_core.sessions import SessionStore, StatusEventData
 from flux0_core.storage.nanodb_memory import (
+    AgentDocumentStore,
     SessionDocumentStore,
     UserDocumentStore,
     _SessionDocument,
@@ -25,7 +26,38 @@ async def collection(db: DocumentDatabase) -> DocumentCollection[_SessionDocumen
 
 
 #############
-# User
+# Agents
+#############
+@pytest.fixture
+async def agent_store(db: DocumentDatabase) -> AgentStore:
+    async with AgentDocumentStore(db) as store:
+        return store
+
+
+async def test_agent_crud(agent_store: AgentStore) -> None:
+    # create
+    #
+    a = await agent_store.create_agent(name="agent1", type=AgentType("mock"))
+    assert a.id is not None
+    # read agent by id
+    #
+    ra = await agent_store.read_agent(a.id)
+    assert ra == a
+    # TODO update
+    #
+    # a.name = "agent2"
+    # ra = await agent_store.update_agent(a)
+    # assert ra == a
+    # delete
+    #
+    ok = await agent_store.delete_agent(a.id)
+    assert ok
+    ra = await agent_store.read_agent(a.id)
+    assert ra is None
+
+
+#############
+# Users
 #############
 @pytest.fixture
 async def user_store(db: DocumentDatabase) -> UserStore:
@@ -56,7 +88,7 @@ async def test_user_crud(user_store: UserStore) -> None:
 
 
 #############
-# Session
+# Sessions
 #############
 
 
