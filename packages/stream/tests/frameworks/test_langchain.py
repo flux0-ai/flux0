@@ -115,7 +115,6 @@ async def test_langchain_streaming(
     )
 
     # (5th) LLM generated a message once received the tool call result
-    print(final_events[4])
     assert_emitted_event(
         final_events[4],
         expected_type="message",
