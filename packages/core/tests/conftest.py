@@ -1,6 +1,6 @@
 import pytest
 from flux0_core.contextual_correlator import ContextualCorrelator
-from flux0_core.logging import ILogger, Logger
+from flux0_core.logging import ContextualLogger, Logger
 
 
 @pytest.fixture
@@ -9,5 +9,5 @@ def correlator() -> ContextualCorrelator:
 
 
 @pytest.fixture
-def logger(correlator: ContextualCorrelator) -> ILogger:
-    return Logger(correlator=correlator)
+def logger(correlator: ContextualCorrelator) -> Logger:
+    return ContextualLogger(correlator=correlator)

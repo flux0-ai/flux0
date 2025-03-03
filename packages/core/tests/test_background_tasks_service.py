@@ -3,7 +3,7 @@ import asyncio
 from typing import List
 
 from flux0_core.background_tasks_service import BackgroundTaskService
-from flux0_core.logging import ILogger
+from flux0_core.logging import Logger
 
 
 async def dummy_task(delay: float, results: List[str], tag: str) -> None:
@@ -16,7 +16,7 @@ async def never_ending_task() -> None:
     await asyncio.Event().wait()
 
 
-async def test_start_task(logger: ILogger) -> None:
+async def test_start_task(logger: Logger) -> None:
     results: List[str] = []
     async with BackgroundTaskService(logger) as service:
         # Start a task that completes quickly.
@@ -30,7 +30,7 @@ async def test_start_task(logger: ILogger) -> None:
         assert len(service._tasks) == 0
 
 
-async def test_cancel_task(logger: ILogger) -> None:
+async def test_cancel_task(logger: Logger) -> None:
     results: List[str] = []
     async with BackgroundTaskService(logger) as service:
         # Start a task that takes longer to complete.
@@ -44,7 +44,7 @@ async def test_cancel_task(logger: ILogger) -> None:
         assert len(service._tasks) == 0
 
 
-async def test_restart_task(logger: ILogger) -> None:
+async def test_restart_task(logger: Logger) -> None:
     results: List[str] = []
     async with BackgroundTaskService(logger) as service:
         # Start a long-running task.
@@ -59,7 +59,7 @@ async def test_restart_task(logger: ILogger) -> None:
         assert len(service._tasks) == 0
 
 
-async def test_aexit_with_exception_cancels_tasks(logger: ILogger) -> None:
+async def test_aexit_with_exception_cancels_tasks(logger: Logger) -> None:
     # Instantiate the service without using the async context manager
     # so that we can simulate an exception on exit.
     service = BackgroundTaskService(logger)

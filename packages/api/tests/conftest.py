@@ -11,7 +11,7 @@ from flux0_core.agent_runners.context import Context
 from flux0_core.agents import Agent, AgentId, AgentStore, AgentType
 from flux0_core.background_tasks_service import BackgroundTaskService
 from flux0_core.contextual_correlator import ContextualCorrelator
-from flux0_core.logging import ILogger, Logger
+from flux0_core.logging import ContextualLogger, Logger
 from flux0_core.sessions import SessionStore
 from flux0_core.storage.nanodb_memory import (
     AgentDocumentStore,
@@ -33,8 +33,8 @@ def correlator() -> ContextualCorrelator:
 
 
 @pytest.fixture
-def logger(correlator: ContextualCorrelator) -> ILogger:
-    return Logger(correlator=correlator)
+def logger(correlator: ContextualCorrelator) -> Logger:
+    return ContextualLogger(correlator=correlator)
 
 
 @pytest.fixture
@@ -90,7 +90,7 @@ async def session_store(
 
 
 @pytest.fixture
-def background_task_service(logger: ILogger) -> BackgroundTaskService:
+def background_task_service(logger: Logger) -> BackgroundTaskService:
     return BackgroundTaskService(logger=logger)
 
 

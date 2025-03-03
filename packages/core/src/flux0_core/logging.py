@@ -31,7 +31,7 @@ class LogLevel(IntEnum):
         }[self]
 
 
-class ILogger(ABC):
+class Logger(ABC):
     """
     Logging interface for structured logs with support for scopes and operation measurement.
     """
@@ -75,7 +75,7 @@ class ILogger(ABC):
         ...
 
 
-class Logger(ILogger):
+class ContextualLogger(Logger):
     """
     A structured logger with support for correlation and scopes.
 
@@ -158,7 +158,7 @@ class Logger(ILogger):
         self.raw_logger = logging.getLogger(logger_id or "flux0")
         self.raw_logger.setLevel(level.logging_level())
 
-        def add_context_fields(_: "Logger", __: str, event_dict: EventDict) -> EventDict:
+        def add_context_fields(_: "ContextualLogger", __: str, event_dict: EventDict) -> EventDict:
             """
             Processor to inject correlation_id and scope_id into the structured log.
             Since structlog does not pass our StructuredLogger instance, we retrieve the values from context.
@@ -251,7 +251,7 @@ class Logger(ILogger):
         return f"[{correlation}]{self.current_scope} {message}"
 
 
-class StdoutLogger(Logger):
+class StdoutLogger(ContextualLogger):
     def __init__(
         self,
         correlator: ContextualCorrelator,

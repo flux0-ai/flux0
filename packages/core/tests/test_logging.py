@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 import pytest
 from flux0_core.contextual_correlator import ContextualCorrelator
-from flux0_core.logging import Logger, LogLevel
+from flux0_core.logging import ContextualLogger, Logger, LogLevel
 
 
 # -----------------------------------------------------------------------------
@@ -41,7 +41,7 @@ def contextual_correlator() -> ContextualCorrelator:
 @pytest.fixture
 def logger(contextual_correlator: ContextualCorrelator) -> Logger:
     """Provides a fresh StructuredLogger with a ListHandler for capturing logs."""
-    log = Logger(contextual_correlator, level=LogLevel.DEBUG)
+    log = ContextualLogger(contextual_correlator, level=LogLevel.DEBUG)
     list_handler = ListHandler()
     list_handler.setFormatter(logging.Formatter("%(message)s"))
     log.raw_logger.addHandler(list_handler)
@@ -50,7 +50,7 @@ def logger(contextual_correlator: ContextualCorrelator) -> Logger:
 
 
 @pytest.fixture
-def list_handler(logger: Logger) -> ListHandler:
+def list_handler(logger: ContextualLogger) -> ListHandler:
     """Provides access to the ListHandler attached to the logger."""
     handler = next(h for h in logger.raw_logger.handlers if isinstance(h, ListHandler))
     assert isinstance(handler, ListHandler)

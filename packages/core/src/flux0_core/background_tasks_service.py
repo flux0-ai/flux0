@@ -3,7 +3,7 @@ import asyncio
 import traceback
 from typing import Any, Coroutine, Dict, Optional, Self, TypeAlias
 
-from flux0_core.logging import ILogger
+from flux0_core.logging import Logger
 
 # Define a type alias for background tasks that do not return a value.
 Task: TypeAlias = asyncio.Task[None]
@@ -12,8 +12,8 @@ Task: TypeAlias = asyncio.Task[None]
 class BackgroundTaskService:
     """A service for managing background tasks."""
 
-    def __init__(self, logger: ILogger) -> None:
-        self._logger: ILogger = logger
+    def __init__(self, logger: Logger) -> None:
+        self._logger: Logger = logger
         self._last_garbage_collection: float = 0.0
         self._garbage_collection_interval: float = 5.0
         self._tasks: Dict[str, Task] = {}
