@@ -6,6 +6,7 @@ dependencies = [
     "fastapi>=0.115.8",
     "flux0-core",
     "flux0-stream",
+    "lagom>=2.7.5",
     "python-dateutil>=2.9.0.post0",
 ]
 
@@ -19,5 +20,14 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
+    "pytest-asyncio>=0.25.3",
     "types-python-dateutil>=2.9.0.20241206",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = [
+  "."
 ]
