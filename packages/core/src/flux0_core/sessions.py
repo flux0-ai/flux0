@@ -161,7 +161,7 @@ class Event:
     data: Union[MessageEventData, StatusEventData, ToolEventData]
     deleted: bool
     created_at: datetime
-    metadata: Optional[Mapping[str, JSONSerializable]] = None
+    metadata: Optional[Mapping[str, JSONSerializable]]
 
 
 class SessionStore(ABC):
@@ -170,8 +170,8 @@ class SessionStore(ABC):
         self,
         user_id: UserId,
         agent_id: AgentId,
+        id: Optional[SessionId] = None,
         mode: Optional[SessionMode] = None,
-        id: Optional[str] = None,
         title: Optional[str] = None,
         created_at: Optional[datetime] = None,
     ) -> Session: ...
