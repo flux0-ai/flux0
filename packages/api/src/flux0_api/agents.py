@@ -20,6 +20,7 @@ def mount_create_agent_route(
     @router.post(
         "",
         tags=[API_GROUP],
+        operation_id="create_agent",
         status_code=status.HTTP_201_CREATED,
         responses={
             status.HTTP_201_CREATED: {
