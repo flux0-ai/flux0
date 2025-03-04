@@ -4,7 +4,7 @@ from typing import Annotated, NewType
 from fastapi import Depends, Request
 from flux0_core.users import User, UserStore
 
-from flux0_api.common import get_container
+from flux0_api.dependency_injection import resolve_dependency
 
 
 class AuthHandler(ABC):
@@ -41,7 +41,7 @@ class NoopAuthHandler(AuthHandler):
 
 async def auth_user(request: Request) -> User:
     """FastAPI dependency that returns an authenticated user object."""
-    auth_handler = get_container(request)[AuthHandler]
+    auth_handler = resolve_dependency(request, AuthHandler)
     return await auth_handler(request)
 
 

@@ -1,7 +1,5 @@
-from typing import Annotated, Any, Mapping, TypeAlias, cast
+from typing import Annotated, Any, Mapping, TypeAlias
 
-from fastapi import Request
-from lagom import Container
 from pydantic import BaseModel, ConfigDict, Field
 
 #: `ExampleJson` represents a JSON structure, either:
@@ -82,7 +80,3 @@ def apigen_config(group_name: str, method_name: str) -> Mapping[str, Any]:
             "x-fern-sdk-method-name": method_name,
         }
     }
-
-
-def get_container(request: Request) -> Container:
-    return cast(Container, request.app.state.container)

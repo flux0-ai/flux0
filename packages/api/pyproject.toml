@@ -6,8 +6,14 @@ dependencies = [
     "fastapi>=0.115.8",
     "flux0-core",
     "flux0-stream",
+    "inflection>=0.5.1",
     "lagom>=2.7.5",
     "python-dateutil>=2.9.0.post0",
+]
+
+[project.optional-dependencies]
+lagom = [
+    "lagom>=2.7.5",
 ]
 
 [tool.uv.sources]

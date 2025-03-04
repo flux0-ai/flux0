@@ -4,7 +4,7 @@ from typing import AsyncGenerator, Generator
 
 import pytest
 from fastapi import FastAPI
-from flux0_api.auth import AuthHandler, NoopAuthHandler
+from flux0_api.auth import NoopAuthHandler
 from flux0_api.session_service import SessionService
 from flux0_core.agent_runners.api import AgentRunner, AgentRunnerFactory
 from flux0_core.agent_runners.context import Context
@@ -24,7 +24,6 @@ from flux0_nanodb.memory import MemoryDocumentDatabase
 from flux0_stream.emitter.api import EventEmitter
 from flux0_stream.emitter.memory import MemoryEventEmitter
 from flux0_stream.store.memory import MemoryEventStore
-from lagom import Container
 
 
 @pytest.fixture
@@ -160,22 +159,14 @@ def session_service(
 
 
 @pytest.fixture
-def container(
+def fastapi(
     correlator: ContextualCorrelator, user_store: UserStore, session_service: SessionService
-) -> Container:
-    c = Container()
-    c[ContextualCorrelator] = correlator
-    c[UserStore] = user_store
-    c[SessionService] = session_service
-    c[AuthHandler] = NoopAuthHandler
-    return c
-
-
-@pytest.fixture
-def fastapi(container: Container) -> FastAPI:
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-        app.state.container = container
+        app.state.auth_handler = NoopAuthHandler(user_store=user_store)
+        app.state.user_store = user_store
+        app.state.session_service = session_service
         yield
 
     app = FastAPI(lifespan=lifespan)

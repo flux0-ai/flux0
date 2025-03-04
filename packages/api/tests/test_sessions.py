@@ -58,11 +58,13 @@ async def test_create_session_success(
     router = APIRouter()
 
     # Mount the route and get the inner function to test.
-    create_session_route = mount_create_session_route(router, user, agent_store, session_service)
+    create_session_route = mount_create_session_route(router)
 
     # Create a dummy session creation DTO. Adjust fields as needed.
     params = SessionCreationParamsDTO(agent_id=agent.id, title="Test session")
-    result: SessionDTO = await create_session_route(params, False)
+    result: SessionDTO = await create_session_route(
+        user, params, agent_store, session_service, False
+    )
 
     # Assert the returned session has expected values.
     assert result.id is not None
@@ -92,11 +94,13 @@ async def test_create_session_with_greeting_success(
     router = APIRouter()
 
     # Mount the route and get the inner function to test.
-    create_session_route = mount_create_session_route(router, user, agent_store, session_service)
+    create_session_route = mount_create_session_route(router)
 
     # Create a dummy session creation DTO. Adjust fields as needed.
     params = SessionCreationParamsDTO(agent_id=agent.id, title="Test session")
-    result: SessionDTO = await create_session_route(params, True)
+    result: SessionDTO = await create_session_route(
+        user, params, agent_store, session_service, True
+    )
 
     # Assert the returned session has expected values.
     assert result.id is not None
@@ -118,10 +122,10 @@ async def test_create_session_agent_not_found_failure(
     user: User, agent_store: AgentStore, session_service: SessionService
 ) -> None:
     router = APIRouter()
-    create_session_route = mount_create_session_route(router, user, agent_store, session_service)
+    create_session_route = mount_create_session_route(router)
     params = SessionCreationParamsDTO(agent_id=AgentId(gen_id()), title="Test session")
     with pytest.raises(HTTPException) as exc_info:
-        await create_session_route(params, False)
+        await create_session_route(user, params, agent_store, session_service, False)
     assert exc_info.value.status_code == 400
 
 
@@ -131,8 +135,8 @@ async def test_get_session_success(
     session = await session_store.create_session(user_id=session.user_id, agent_id=session.agent_id)
     router = APIRouter()
 
-    get_session_route = mount_get_session_route(router, user, session_store)
-    rs = await get_session_route(session.id)
+    get_session_route = mount_get_session_route(router)
+    rs = await get_session_route(user, session.id, session_store)
 
     session_dict = asdict(session)
     session_dict.pop("mode")
@@ -142,9 +146,9 @@ async def test_get_session_success(
 async def test_get_session_not_found_failure(user: User, session_store: SessionStore) -> None:
     router = APIRouter()
 
-    get_session_route = mount_get_session_route(router, user, session_store)
+    get_session_route = mount_get_session_route(router)
     with pytest.raises(HTTPException) as exc_info:
-        await get_session_route(SessionId(gen_id()))
+        await get_session_route(user, SessionId(gen_id()), session_store)
     assert exc_info.value.status_code == 404
 
 
@@ -209,13 +213,20 @@ async def test_create_event_and_stream_success(
     session_service._agent_runner_factory = MockAgentRunnerFactory(runner_class=MockAgentRunner)
 
     router = APIRouter()
-    create_event_and_stream_route = mount_create_event_and_stream_route(
-        router, user, session_store, session_service, user_store, agent_store, event_emitter
-    )
+    create_event_and_stream_route = mount_create_event_and_stream_route(router)
     params = EventCreationParamsDTO(
         type=EventTypeDTO.MESSAGE, source=EventSourceDTO.USER, content="What's the weather in SF?"
     )
-    response = await create_event_and_stream_route(session.id, params)
+    response = await create_event_and_stream_route(
+        user,
+        session.id,
+        params,
+        session_service,
+        session_store,
+        user_store,
+        agent_store,
+        event_emitter,
+    )
     assert response.status_code == 200
     assert isinstance(response, StreamingResponse)
     events = await consume_streaming_response(response)
@@ -243,8 +254,10 @@ async def test_list_session_events_success(
             participant=Participant(id=user.id, name=user.name),
         ),
     )
-    list_session_events_route = mount_list_session_events_route(router, user, session_store)
-    response = await list_session_events_route(session.id, None, None, None, None)
+    list_session_events_route = mount_list_session_events_route(router)
+    response = await list_session_events_route(
+        user, session.id, session_store, None, None, None, None
+    )
     events = response.data
     assert len(events) == 1
     e1 = events[0]
@@ -268,42 +281,48 @@ async def test_list_session_events_success(
     )
 
     # filter by offset
-    response = await list_session_events_route(session.id, 1, None, None, None)
+    response = await list_session_events_route(user, session.id, session_store, 1, None, None, None)
     assert response.data == []
 
     # filter by source
     response = await list_session_events_route(
-        session.id, None, EventSourceDTO.AI_AGENT, None, None
+        user, session.id, session_store, None, EventSourceDTO.AI_AGENT, None, None
     )
     assert response.data == []
 
     # filter by type
-    response = await list_session_events_route(session.id, None, EventSourceDTO.USER, None, None)
+    response = await list_session_events_route(
+        user, session.id, session_store, None, EventSourceDTO.USER, None, None
+    )
     assert len(response.data) == 1
 
-    response = await list_session_events_route(session.id, None, None, "non_existing_corr_id", None)
+    response = await list_session_events_route(
+        user, session.id, session_store, None, None, "non_existing_corr_id", None
+    )
     assert response.data == []
 
     # filter by correlation_id
     response = await list_session_events_route(
-        session.id, None, None, correlator.correlation_id, None
+        user, session.id, session_store, None, None, correlator.correlation_id, None
     )
     assert len(response.data) == 1
 
     # filter by event types
     response = await list_session_events_route(
-        session.id, None, None, "non_existing_corr_id", [EventTypeDTO.TOOL]
+        user, session.id, session_store, None, None, "non_existing_corr_id", [EventTypeDTO.TOOL]
     )
     assert response.data == []
 
     response = await list_session_events_route(
-        session.id, None, None, None, [EventTypeDTO.TOOL, EventTypeDTO.MESSAGE]
+        user, session.id, session_store, None, None, None, [EventTypeDTO.TOOL, EventTypeDTO.MESSAGE]
     )
     assert len(response.data) == 1
 
     # all correct filters
     response = await list_session_events_route(
+        user,
         session.id,
+        session_store,
         0,
         EventSourceDTO.USER,
         correlator.correlation_id,

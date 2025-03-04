@@ -2,7 +2,7 @@ import asyncio
 import json
 from typing import Any, AsyncGenerator, Callable, Coroutine, Optional, Sequence, Set, Union, cast
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from flux0_core.agents import AgentStore
 from flux0_core.sessions import (
@@ -21,6 +21,13 @@ from flux0_stream.types import ChunkEvent, EmittedEvent
 
 from flux0_api.auth import AuthedUser
 from flux0_api.common import JSONSerializableDTO, apigen_config, example_json_content
+from flux0_api.dependency_injection import (
+    get_agent_store,
+    get_event_emitter,
+    get_session_service,
+    get_session_store,
+    get_user_store,
+)
 from flux0_api.session_service import SessionService
 from flux0_api.types_events import (
     CorrelationIdQuery,
@@ -47,10 +54,10 @@ API_GROUP = "sessions"
 
 def mount_create_session_route(
     router: APIRouter,
-    authedUser: AuthedUser,
-    agent_store: AgentStore,
-    session_service: SessionService,
-) -> Callable[[SessionCreationParamsDTO, AllowGreetingQuery], Coroutine[Any, Any, SessionDTO]]:
+) -> Callable[
+    [AuthedUser, SessionCreationParamsDTO, AgentStore, SessionService, AllowGreetingQuery],
+    Coroutine[Any, Any, SessionDTO],
+]:
     @router.post(
         "",
         tags=[API_GROUP],
@@ -70,7 +77,11 @@ def mount_create_session_route(
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
     async def create_session_route(
-        params: SessionCreationParamsDTO, allow_greeting: AllowGreetingQuery = False
+        authedUser: AuthedUser,
+        params: SessionCreationParamsDTO,
+        agent_store: AgentStore = Depends(get_agent_store),
+        session_service: SessionService = Depends(get_session_service),
+        allow_greeting: AllowGreetingQuery = False,
     ) -> SessionDTO:
         """
         Create a new session bettween a user and an agent.
@@ -107,9 +118,7 @@ def mount_create_session_route(
 
 def mount_get_session_route(
     router: APIRouter,
-    authedUser: AuthedUser,
-    session_store: SessionStore,
-) -> Callable[[SessionIdPath], Coroutine[Any, Any, SessionDTO]]:
+) -> Callable[[AuthedUser, SessionIdPath, SessionStore], Coroutine[Any, Any, SessionDTO]]:
     @router.get(
         "/{session_id}",
         operation_id="read_session",
@@ -125,7 +134,9 @@ def mount_get_session_route(
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
     async def read_session(
+        authedUser: AuthedUser,
         session_id: SessionIdPath,
+        session_store: SessionStore = Depends(get_session_store),
     ) -> SessionDTO:
         """Retrieve details of a session by its unique identifier"""
 
@@ -317,13 +328,19 @@ async def _add_user_message(
 
 def mount_create_event_and_stream_route(
     router: APIRouter,
-    _: AuthedUser,
-    session_store: SessionStore,
-    session_service: SessionService,
-    user_store: UserStore,
-    agent_store: AgentStore,
-    event_emitter: EventEmitter,
-) -> Callable[[SessionIdPath, EventCreationParamsDTO], Coroutine[Any, Any, StreamingResponse]]:
+) -> Callable[
+    [
+        AuthedUser,
+        SessionIdPath,
+        EventCreationParamsDTO,
+        SessionService,
+        SessionStore,
+        UserStore,
+        AgentStore,
+        EventEmitter,
+    ],
+    Coroutine[Any, Any, StreamingResponse],
+]:
     @router.post(
         "/{session_id}/events/stream",
         status_code=status.HTTP_200_OK,
@@ -378,8 +395,14 @@ def mount_create_event_and_stream_route(
         **apigen_config(group_name=API_GROUP, method_name="create_event"),
     )
     async def create_event_and_stream(
+        _: AuthedUser,
         session_id: SessionIdPath,
         params: EventCreationParamsDTO,
+        session_service: SessionService = Depends(get_session_service),
+        session_store: SessionStore = Depends(get_session_store),
+        user_store: UserStore = Depends(get_user_store),
+        agent_store: AgentStore = Depends(get_agent_store),
+        event_emitter: EventEmitter = Depends(get_event_emitter),
         # moderation: ModerationQuery = Moderation.NONE,
     ) -> StreamingResponse:
         """Creates a new event in the specified session in streaming mode.
@@ -424,10 +447,12 @@ def mount_create_event_and_stream_route(
 
 
 def mount_list_session_events_route(
-    router: APIRouter, _: AuthedUser, session_store: SessionStore
+    router: APIRouter,
 ) -> Callable[
     [
+        AuthedUser,
         SessionIdPath,
+        SessionStore,
         Optional[MinOffsetQuery],
         Optional[EventSourceDTO],
         Optional[CorrelationIdQuery],
@@ -457,7 +482,9 @@ def mount_list_session_events_route(
         **apigen_config(group_name=API_GROUP, method_name="list_events"),
     )
     async def list_events(
+        user: AuthedUser,
         session_id: SessionIdPath,
+        session_store: SessionStore = Depends(get_session_store),
         min_offset: Optional[MinOffsetQuery] = None,
         source: Optional[EventSourceDTO] = None,
         correlation_id: Optional[CorrelationIdQuery] = None,
