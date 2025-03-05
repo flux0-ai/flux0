@@ -147,7 +147,7 @@ class StatusEventDataDTO(DefaultBaseModel):
     """
     type: Literal["status"]
     status: StatusEventDataStatusField
-    acknowledged_offset: int
+    acknowledged_offset: Optional[int] = None
     data: Optional[JSONSerializableDTO] = None
 
 
