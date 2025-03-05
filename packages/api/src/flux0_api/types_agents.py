@@ -10,7 +10,7 @@ from pydantic import Field
 from flux0_api.common import DEFAULT_MODEL_CONFIG, DefaultBaseModel, ExampleJson
 
 agent_id_example = "vUfk4PgjTm"
-agent_name_examples = ["Tala", "Nori"]
+agent_name_examples = ["Drizzle", "Smarty"]
 agent_title_example = "What's the weather in SF?"
 agent_type_example = "weather"
 agent_description_example = "An agent that checks the weather"
@@ -28,7 +28,7 @@ AgentIdPath: TypeAlias = Annotated[
     AgentId,
     Path(
         description="Unique identifier for the agent",
-        examples=["vUfk4PgjTm"],
+        examples=[agent_id_example],
         min_length=10,
         max_length=10,
     ),
@@ -39,7 +39,7 @@ AgentNameField: TypeAlias = Annotated[
     str,
     Field(
         description="The display name of the agent, mainly for representation purposes",
-        examples=["Tala", "Nori"],
+        examples=agent_name_examples,
         min_length=1,
         max_length=100,
     ),
@@ -49,7 +49,7 @@ AgentTypeField: TypeAlias = Annotated[
     AgentType,
     Field(
         description="The type of the agent",
-        examples=["naive_storyteller"],
+        examples=[agent_type_example],
         min_length=1,
         max_length=100,
     ),
@@ -60,7 +60,7 @@ AgentDescriptionField: TypeAlias = Annotated[
     Field(
         default=None,
         description="Detailed of the agent's purpose and capabilities",
-        examples=["A naive story teller"],
+        examples=[agent_description_example],
     ),
 ]
 
@@ -95,9 +95,9 @@ class AgentDTO(DefaultBaseModel):
 # ===========================
 
 agent_creation_params_example: ExampleJson = {
-    "name": "Nori",
-    "type": "naive_storyteller",
-    "description": "A naive story teller",
+    "name": agent_name_examples[0],
+    "type": agent_type_example,
+    "description": agent_description_example,
 }
 
 

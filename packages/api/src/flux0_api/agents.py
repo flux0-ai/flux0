@@ -62,6 +62,7 @@ def mount_read_agent_route(
 ) -> Callable[[AuthedUser, AgentIdPath, AgentStore], Coroutine[Any, Any, AgentDTO]]:
     @router.get(
         "/{agent_id}",
+        tags=[API_GROUP],
         operation_id="read_agent",
         response_model=AgentDTO,
         responses={

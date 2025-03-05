@@ -121,6 +121,7 @@ def mount_get_session_route(
 ) -> Callable[[AuthedUser, SessionIdPath, SessionStore], Coroutine[Any, Any, SessionDTO]]:
     @router.get(
         "/{session_id}",
+        tags=[API_GROUP],
         operation_id="read_session",
         response_model=SessionDTO,
         response_model_exclude_none=True,
@@ -343,8 +344,9 @@ def mount_create_event_and_stream_route(
 ]:
     @router.post(
         "/{session_id}/events/stream",
+        tags=[API_GROUP],
         status_code=status.HTTP_200_OK,
-        operation_id="create_event",
+        operation_id="create_session_event",
         responses={
             status.HTTP_200_OK: {
                 "description": "Server-Sent Events (SSE) stream with structured event types",
@@ -462,6 +464,7 @@ def mount_list_session_events_route(
 ]:
     @router.get(
         "/{session_id}/events",
+        tags=[API_GROUP],
         operation_id="list_events",
         response_model=EventsDTO,
         responses={
