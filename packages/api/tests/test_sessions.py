@@ -24,7 +24,7 @@ from flux0_api.types_events import (
     MessageEventDataDTO,
 )
 from flux0_api.types_session import SessionCreationParamsDTO, SessionDTO
-from flux0_core.agent_runners.api import AgentRunner
+from flux0_core.agent_runners.api import AgentRunner, Deps
 from flux0_core.agent_runners.context import Context
 from flux0_core.agents import Agent, AgentId, AgentStore
 from flux0_core.contextual_correlator import ContextualCorrelator
@@ -78,6 +78,7 @@ async def test_create_session_success(
 
 
 async def test_create_session_with_greeting_success(
+    correlator: ContextualCorrelator,
     user: User,
     agent: Agent,
     agent_store: AgentStore,
@@ -199,13 +200,13 @@ async def test_create_event_and_stream_success(
     session = await session_store.create_session(user_id=session.user_id, agent_id=agent.id)
 
     class MockAgentRunner(AgentRunner):
-        async def run(self, context: Context, event_emitter: EventEmitter) -> bool:
-            await event_emitter.enqueue_status_event(
-                correlation_id=correlator.correlation_id,
+        async def run(self, context: Context, deps: Deps) -> bool:
+            await deps.event_emitter.enqueue_status_event(
+                correlation_id=deps.correlator.correlation_id,
                 data=StatusEventData(type="status", status="typing"),
             )
-            await event_emitter.enqueue_status_event(
-                correlation_id=correlator.correlation_id,
+            await deps.event_emitter.enqueue_status_event(
+                correlation_id=deps.correlator.correlation_id,
                 data=StatusEventData(type="status", status="completed"),
             )
             return True

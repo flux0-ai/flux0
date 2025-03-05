@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-from flux0_core.agent_runners.api import AgentRunnerFactory
+from flux0_core.agent_runners.api import AgentRunnerFactory, Deps
 from flux0_core.agent_runners.context import Context
-from flux0_core.agents import Agent
+from flux0_core.agents import Agent, AgentStore
 from flux0_core.background_tasks_service import BackgroundTaskService
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.ids import gen_id
@@ -26,12 +26,14 @@ class SessionService:
     def __init__(
         self,
         contextual_correlator: ContextualCorrelator,
+        agent_store: AgentStore,
         session_store: SessionStore,
         background_task_service: BackgroundTaskService,
         agent_runner_factory: AgentRunnerFactory,
         event_emitter: EventEmitter,
     ):
         self._correlator = contextual_correlator
+        self._agent_store = agent_store
         self._session_store = session_store
         self._background_task_service = background_task_service
         self._agent_runner_factory = agent_runner_factory
@@ -114,5 +116,10 @@ class SessionService:
                 session_id=session.id,
                 agent_id=session.agent_id,
             ),
-            event_emitter=self._event_emitter,
+            Deps(
+                correlator=self._correlator,
+                event_emitter=self._event_emitter,
+                agent_store=self._agent_store,
+                session_store=self._session_store,
+            ),
         )

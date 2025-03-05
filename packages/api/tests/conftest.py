@@ -145,12 +145,14 @@ async def event_emitter(logger: Logger) -> AsyncGenerator[EventEmitter, None]:
 def session_service(
     correlator: ContextualCorrelator,
     session_store: SessionStore,
+    agent_store: AgentStore,
     background_task_service: BackgroundTaskService,
     agent_runner_factory: AgentRunnerFactory,
     event_emitter: EventEmitter,
 ) -> SessionService:
     return SessionService(
         contextual_correlator=correlator,
+        agent_store=agent_store,
         session_store=session_store,
         background_task_service=background_task_service,
         agent_runner_factory=agent_runner_factory,
