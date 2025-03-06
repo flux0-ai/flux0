@@ -5,7 +5,7 @@ import pytest
 from fastapi import APIRouter, HTTPException
 from flux0_api.agents import (
     mount_create_agent_route,
-    mount_read_agent_route,
+    mount_retrieve_agent_route,
 )
 from flux0_api.types_agents import AgentCreationParamsDTO, AgentDTO
 from flux0_core.agents import Agent, AgentId, AgentStore
@@ -44,7 +44,7 @@ async def test_read_agent_success(
     agent = await agent_store.create_agent(agent.name, agent.type, agent.description)
     router = APIRouter()
 
-    read_route = mount_read_agent_route(router)
+    read_route = mount_retrieve_agent_route(router)
     rs = await read_route(user, agent.id, agent_store)
 
     agent_dict = asdict(agent)
@@ -54,7 +54,7 @@ async def test_read_agent_success(
 async def test_read_agent_not_found_failure(user: User, agent_store: AgentStore) -> None:
     router = APIRouter()
 
-    read_route = mount_read_agent_route(router)
+    read_route = mount_retrieve_agent_route(router)
     with pytest.raises(HTTPException) as exc_info:
         await read_route(user, AgentId(gen_id()), agent_store)
     assert exc_info.value.status_code == 404

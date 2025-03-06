@@ -13,10 +13,7 @@ API_GROUP = "agents"
 
 def mount_create_agent_route(
     router: APIRouter,
-) -> Callable[
-    [AuthedUser, AgentCreationParamsDTO, AgentStore],
-    Coroutine[Any, Any, AgentDTO],
-]:
+) -> Callable[[AuthedUser, AgentCreationParamsDTO, AgentStore], Coroutine[None, Any, AgentDTO]]:
     @router.post(
         "",
         tags=[API_GROUP],
@@ -35,11 +32,12 @@ def mount_create_agent_route(
         response_model_exclude_none=True,
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
-    async def create_agent_route(
+    async def create_agent(
         authedUser: AuthedUser,
         params: AgentCreationParamsDTO,
         agent_store: AgentStore = Depends(get_agent_store),
     ) -> AgentDTO:
+        """Creates a new agent with the specified parameters."""
         agent = await agent_store.create_agent(
             name=params and params.name or "Unnamed Agent",
             type=params.type,
@@ -54,16 +52,16 @@ def mount_create_agent_route(
             created_at=agent.created_at,
         )
 
-    return create_agent_route
+    return create_agent
 
 
-def mount_read_agent_route(
+def mount_retrieve_agent_route(
     router: APIRouter,
 ) -> Callable[[AuthedUser, AgentIdPath, AgentStore], Coroutine[Any, Any, AgentDTO]]:
     @router.get(
         "/{agent_id}",
         tags=[API_GROUP],
-        operation_id="read_agent",
+        operation_id="retrieve_agent",
         response_model=AgentDTO,
         responses={
             status.HTTP_200_OK: {
@@ -71,12 +69,12 @@ def mount_read_agent_route(
                 "content": example_json_content(agent_example),
             },
             status.HTTP_404_NOT_FOUND: {
-                "description": "Agent not found. the specified `agent_id` does not exist"
+                "description": "Agent not found. The specified `agent_id` does not exist"
             },
         },
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
-    async def read_agent_route(
+    async def read_agent(
         _: AuthedUser,
         agent_id: AgentIdPath,
         agent_store: AgentStore = Depends(get_agent_store),
@@ -100,4 +98,4 @@ def mount_read_agent_route(
             created_at=agent.created_at,
         )
 
-    return read_agent_route
+    return read_agent
