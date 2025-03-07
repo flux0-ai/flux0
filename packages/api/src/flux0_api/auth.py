@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Annotated, NewType
 
 from fastapi import Depends, Request
@@ -14,6 +15,11 @@ class AuthHandler(ABC):
 
 
 AuthHandlers = NewType("AuthHandlers", AuthHandler)
+
+
+class AuthType(Enum):
+    NOOP = "noop"
+
 
 NOOP_AUTH_HANDLER_DEFAULT_SUB = "anonymous"
 NOOP_AUTH_HANDLER_DEFAULT_NAME = NOOP_AUTH_HANDLER_DEFAULT_SUB.capitalize()
