@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterator, Optional, override
 
 import structlog
 from structlog.types import EventDict
+from structlog.typing import Processor
 
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.ids import gen_id
@@ -148,6 +149,7 @@ class ContextualLogger(Logger):
         correlator: ContextualCorrelator,
         level: LogLevel = LogLevel.DEBUG,
         logger_id: str | None = None,
+        renderer: Optional[Processor] = None,
     ) -> None:
         self.correlator = correlator
         # Context variable for additional logging scopes.
@@ -168,6 +170,9 @@ class ContextualLogger(Logger):
                 event_dict["scope"] = self._scopes.get()
             return event_dict
 
+        # Use JSONRenderer by default unless another renderer is provided.
+        renderer = renderer if renderer is not None else structlog.processors.JSONRenderer()
+
         # Wrap raw_logger with structlog to support structured logging.
         self._logger = structlog.wrap_logger(
             self.raw_logger,
@@ -179,8 +184,7 @@ class ContextualLogger(Logger):
                 structlog.stdlib.PositionalArgumentsFormatter(),
                 structlog.processors.StackInfoRenderer(),
                 structlog.processors.format_exc_info,
-                structlog.processors.JSONRenderer(),
-                # structlog.dev.ConsoleRenderer(colors=True),
+                renderer,
             ],
             wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
         )
@@ -257,6 +261,12 @@ class StdoutLogger(ContextualLogger):
         correlator: ContextualCorrelator,
         log_level: LogLevel = LogLevel.DEBUG,
         logger_id: str | None = None,
+        json: bool = True,
     ) -> None:
-        super().__init__(correlator, log_level, logger_id)
+        super().__init__(
+            correlator,
+            log_level,
+            logger_id,
+            structlog.dev.ConsoleRenderer(colors=True) if not json else None,
+        )
         self.raw_logger.addHandler(logging.StreamHandler())
