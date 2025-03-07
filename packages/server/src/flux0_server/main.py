@@ -6,6 +6,7 @@ from typing import AsyncIterator
 
 import uvicorn
 from flux0_api.auth import AuthHandler, AuthType, NoopAuthHandler
+from flux0_api.session_service import SessionService
 from flux0_core.agents import AgentStore
 from flux0_core.background_tasks_service import BackgroundTaskService
 from flux0_core.contextual_correlator import ContextualCorrelator
@@ -19,10 +20,13 @@ from flux0_core.storage.nanodb_memory import (
 from flux0_core.storage.types import StorageType
 from flux0_core.users import UserStore
 from flux0_nanodb.memory import MemoryDocumentDatabase
+from flux0_stream.emitter.memory import MemoryEventEmitter
+from flux0_stream.store.memory import MemoryEventStore
 from lagom import Container
 from starlette.types import ASGIApp
 
 from flux0_server.app import create_api_app
+from flux0_server.container_factory import ContainerAgentRunnerFactory
 from flux0_server.settings import EnvType, Settings, settings
 from flux0_server.version import VERSION
 
@@ -52,9 +56,21 @@ async def setup_container(
 
     if settings.stores_type == StorageType.NANODB_MEMORY:
         db = MemoryDocumentDatabase()
+        event_store = await exit_stack.enter_async_context(MemoryEventStore())
+        event_emitter = await exit_stack.enter_async_context(
+            MemoryEventEmitter(event_store=event_store, logger=LOGGER)
+        )
         user_store = await exit_stack.enter_async_context(UserDocumentStore(db))
         agent_store = await exit_stack.enter_async_context(AgentDocumentStore(db))
         session_store = await exit_stack.enter_async_context(SessionDocumentStore(db))
+        c[SessionService] = SessionService(
+            contextual_correlator=CORRELATOR,
+            agent_store=agent_store,
+            session_store=session_store,
+            background_task_service=BACKGROUND_TASK_SERVICE,
+            agent_runner_factory=ContainerAgentRunnerFactory(c),
+            event_emitter=event_emitter,
+        )
         c[UserStore] = user_store
         c[AgentStore] = agent_store
         c[SessionStore] = session_store

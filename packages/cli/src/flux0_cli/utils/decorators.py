@@ -3,6 +3,7 @@ from typing import Any, Callable, Optional, TypeVar, cast
 
 import click
 from flux0_client import NotFoundError
+from flux0_client.core.api_error import ApiError
 
 
 def validate_jsonpath(f: Callable[..., Any]) -> Callable[..., Any]:
@@ -125,9 +126,11 @@ def handle_exceptions(f: Callable[..., Any]) -> Callable[..., Any]:
         try:
             return f(*args, **kwargs)
         except NotFoundError as e:
-            click.echo(f"❌ Error: {e.body.get('detail', 'Resource not found')}", err=True)
+            click.echo(f"❌ {e.body.get('detail', 'Resource not found')}", err=True)
+        except ApiError as e:
+            click.echo(f"❌ {e.body.get('detail', 'Unknown error')}", err=True)
         except Exception as e:
-            click.echo(f"⚠️ Unexpected error: {str(e)}", err=True)
+            click.echo(f"⚠️ Unexpected error: {e}", err=True)
             return None  # Ensures the function always returns something
 
     return wrapper

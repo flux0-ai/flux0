@@ -7,6 +7,7 @@ from flux0_api.agents import (
     mount_list_agents_route,
     mount_retrieve_agent_route,
 )
+from flux0_api.sessions import mount_create_session_route
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.ids import gen_id
 from flux0_core.logging import Logger
@@ -43,11 +44,15 @@ async def create_api_app(c: Container) -> ASGIApp:
 
     api_router = APIRouter(prefix="/api")
 
-    api_agent_router = APIRouter(prefix="/agents")
-    mount_create_agent_route(api_agent_router)
-    mount_retrieve_agent_route(api_agent_router)
-    mount_list_agents_route(api_agent_router)
-    api_router.include_router(api_agent_router)
+    api_agents_router = APIRouter(prefix="/agents")
+    mount_create_agent_route(api_agents_router)
+    mount_retrieve_agent_route(api_agents_router)
+    mount_list_agents_route(api_agents_router)
+    api_router.include_router(api_agents_router)
+
+    api_sessions_router = APIRouter(prefix="/sessions")
+    mount_create_session_route(api_sessions_router)
+    api_router.include_router(api_sessions_router)
 
     api_app.include_router(api_router)
 
