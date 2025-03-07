@@ -116,13 +116,13 @@ def mount_create_session_route(
     return create_session_route
 
 
-def mount_get_session_route(
+def mount_retrieve_session_route(
     router: APIRouter,
 ) -> Callable[[AuthedUser, SessionIdPath, SessionStore], Coroutine[Any, Any, SessionDTO]]:
     @router.get(
         "/{session_id}",
         tags=[API_GROUP],
-        operation_id="read_session",
+        operation_id="retrieve_session",
         response_model=SessionDTO,
         response_model_exclude_none=True,
         responses={
@@ -134,7 +134,7 @@ def mount_get_session_route(
         },
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
-    async def read_session(
+    async def retrieve_session(
         authedUser: AuthedUser,
         session_id: SessionIdPath,
         session_store: SessionStore = Depends(get_session_store),
@@ -159,7 +159,7 @@ def mount_get_session_route(
             created_at=session.created_at,
         )
 
-    return read_session
+    return retrieve_session
 
 
 # SSE Generator function

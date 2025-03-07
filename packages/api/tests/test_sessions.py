@@ -12,8 +12,8 @@ from flux0_api.session_service import SessionService
 from flux0_api.sessions import (
     mount_create_event_and_stream_route,
     mount_create_session_route,
-    mount_get_session_route,
     mount_list_session_events_route,
+    mount_retrieve_session_route,
 )
 from flux0_api.types_events import (
     ContentPartDTO,
@@ -136,7 +136,7 @@ async def test_get_session_success(
     session = await session_store.create_session(user_id=session.user_id, agent_id=session.agent_id)
     router = APIRouter()
 
-    get_session_route = mount_get_session_route(router)
+    get_session_route = mount_retrieve_session_route(router)
     rs = await get_session_route(user, session.id, session_store)
 
     session_dict = asdict(session)
@@ -147,7 +147,7 @@ async def test_get_session_success(
 async def test_get_session_not_found_failure(user: User, session_store: SessionStore) -> None:
     router = APIRouter()
 
-    get_session_route = mount_get_session_route(router)
+    get_session_route = mount_retrieve_session_route(router)
     with pytest.raises(HTTPException) as exc_info:
         await get_session_route(user, SessionId(gen_id()), session_store)
     assert exc_info.value.status_code == 404

@@ -80,7 +80,7 @@ def mount_retrieve_agent_route(
         },
         **apigen_config(group_name=API_GROUP, method_name="retrieve"),
     )
-    async def read_agent(
+    async def retrieve_agent(
         _: AuthedUser,
         agent_id: AgentIdPath,
         agent_store: AgentStore = Depends(get_agent_store),
@@ -104,7 +104,7 @@ def mount_retrieve_agent_route(
             created_at=agent.created_at,
         )
 
-    return read_agent
+    return retrieve_agent
 
 
 def mount_list_agents_route(
