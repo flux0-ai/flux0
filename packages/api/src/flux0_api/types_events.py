@@ -15,6 +15,7 @@ from pydantic import Field
 
 from flux0_api.common import (
     DEFAULT_MODEL_CONFIG,
+    DefaultBaseEnum,
     DefaultBaseModel,
     ExampleJson,
     JSONSerializableDTO,
@@ -208,7 +209,7 @@ class ToolEventDataDTO(DefaultBaseModel):
 # ===========================
 # Event props
 # ===========================
-class EventSourceDTO(Enum):
+class EventSourceDTO(DefaultBaseEnum):
     """
     Source of the event within a session.
 
@@ -240,7 +241,7 @@ EventCorrelationIdField: TypeAlias = Annotated[
 ]
 
 
-class EventTypeDTO(Enum):
+class EventTypeDTO(DefaultBaseEnum):
     """
     Type of event that occurred within a session.
 

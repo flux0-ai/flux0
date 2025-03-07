@@ -1,6 +1,9 @@
+from enum import Enum
 from typing import Annotated, Any, Mapping, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 #: `ExampleJson` represents a JSON structure, either:
 #: - A dictionary with string keys and any values
@@ -68,6 +71,20 @@ class DefaultBaseModel(BaseModel):
     """
 
     model_config = DEFAULT_MODEL_CONFIG
+
+
+class DefaultBaseEnum(Enum):
+    def __str__(self) -> str:
+        name = self.__class__.__name__
+        return name.removesuffix("DTO")
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(core_schema)  # Correctly calls the handler
+        json_schema["title"] = cls.__name__.removesuffix("DTO")  # Modify title
+        return json_schema
 
 
 def apigen_config(group_name: str, method_name: str) -> Mapping[str, Any]:
