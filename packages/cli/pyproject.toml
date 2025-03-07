@@ -1,0 +1,18 @@
+[project]
+name = "flux0-cli"
+version = "0.0.1"
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.1.8",
+    "jsonpath-ng>=1.7.0",
+    "pyyaml>=6.0.2",
+    "rich>=13.9.4",
+    "flux0-client"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+flux0-client = { workspace = true }
