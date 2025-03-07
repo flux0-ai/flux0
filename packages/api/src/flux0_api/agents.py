@@ -6,7 +6,13 @@ from flux0_core.agents import AgentStore
 from flux0_api.auth import AuthedUser
 from flux0_api.common import apigen_config, example_json_content
 from flux0_api.dependency_injection import get_agent_store
-from flux0_api.types_agents import AgentCreationParamsDTO, AgentDTO, AgentIdPath, agent_example
+from flux0_api.types_agents import (
+    AgentCreationParamsDTO,
+    AgentDTO,
+    AgentIdPath,
+    AgentsDTO,
+    agent_example,
+)
 
 API_GROUP = "agents"
 
@@ -99,3 +105,46 @@ def mount_retrieve_agent_route(
         )
 
     return read_agent
+
+
+def mount_list_agents_route(
+    router: APIRouter,
+) -> Callable[[AuthedUser, AgentStore], Coroutine[Any, Any, AgentsDTO]]:
+    @router.get(
+        "",
+        tags=[API_GROUP],
+        operation_id="list_agents",
+        response_model=AgentsDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "List of all agents in the system",
+                "content": example_json_content({"data": [agent_example]}),
+            }
+        },
+        **apigen_config(group_name=API_GROUP, method_name="list"),
+    )
+    async def list_agents(
+        _: AuthedUser,
+        agent_store: AgentStore = Depends(get_agent_store),
+    ) -> AgentsDTO:
+        """
+        Retrieves a list of all agents in the system.
+
+        Returns an empty list if no agents exist.
+        Agents are returned in no guaranteed order.
+        """
+        agents = await agent_store.list_agents()
+        return AgentsDTO(
+            data=[
+                AgentDTO(
+                    id=a.id,
+                    name=a.name,
+                    type=a.type,
+                    description=a.description,
+                    created_at=a.created_at,
+                )
+                for a in agents
+            ]
+        )
+
+    return list_agents

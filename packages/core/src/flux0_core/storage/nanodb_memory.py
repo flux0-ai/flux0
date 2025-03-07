@@ -203,7 +203,12 @@ class AgentDocumentStore(AgentStore):
         limit: int = 10,
         projection: Optional[List[str]] = None,
     ) -> Sequence[Agent]:
-        raise NotImplementedError
+        if offset != 0 or limit != 10:
+            raise NotImplementedError("Pagination is not supported")
+        if projection is not None:
+            raise NotImplementedError("Projection not supported")
+        async with self._lock.reader_lock:
+            return [self._deserialize_agent(d) for d in await self._agent_col.find(filters=None)]
 
     @override
     async def update_agent(

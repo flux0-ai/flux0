@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Optional, TypeAlias
+from typing import Annotated, Optional, Sequence, TypeAlias
 
 import dateutil
 import dateutil.parser
@@ -114,3 +114,20 @@ class AgentCreationParamsDTO(DefaultBaseModel):
     name: AgentNameField
     type: AgentTypeField
     description: Optional[AgentDescriptionField] = None
+
+
+# ===========================
+# List Agents
+# ===========================
+class AgentsDTO(DefaultBaseModel):
+    model_config = DEFAULT_MODEL_CONFIG.copy()
+    model_config["json_schema_extra"] = {
+        "example": {
+            "data": [agent_example],
+        }
+    }
+
+    """
+    List of agents in the system.
+    """
+    data: Sequence[AgentDTO]

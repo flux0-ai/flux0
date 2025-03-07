@@ -11,7 +11,6 @@ from flux0_cli.utils.decorators import (
 )
 from flux0_cli.utils.output import OutputFormatter
 from flux0_client import Flux0Client
-from flux0_client.types.agent import Agent
 
 
 @click.group()
@@ -36,9 +35,11 @@ def get_agent(ctx: click.Context, id: str, output: str, jsonpath: Optional[str])
 @validate_jsonpath
 def list_agents(ctx: click.Context, output: str, jsonpath: Optional[str]) -> None:
     """Retrieve agents"""
-    agents: list[Agent] = []
+    cli_ctx: Flux0CLIContext = ctx.obj
+    client: Flux0Client = cli_ctx.client
+    response = client.agents.list()
 
-    result = OutputFormatter.format(agents, output_format=output, jsonpath_expr=jsonpath)
+    result = OutputFormatter.format(response.data, output_format=output, jsonpath_expr=jsonpath)
     if result:
         click.echo(result)
 

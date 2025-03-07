@@ -2,7 +2,11 @@ import asyncio
 from typing import Awaitable, Callable
 
 from fastapi import APIRouter, FastAPI, Request, Response, status
-from flux0_api.agents import mount_create_agent_route, mount_retrieve_agent_route
+from flux0_api.agents import (
+    mount_create_agent_route,
+    mount_list_agents_route,
+    mount_retrieve_agent_route,
+)
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.ids import gen_id
 from flux0_core.logging import Logger
@@ -42,6 +46,7 @@ async def create_api_app(c: Container) -> ASGIApp:
     api_agent_router = APIRouter(prefix="/agents")
     mount_create_agent_route(api_agent_router)
     mount_retrieve_agent_route(api_agent_router)
+    mount_list_agents_route(api_agent_router)
     api_router.include_router(api_agent_router)
 
     api_app.include_router(api_router)
