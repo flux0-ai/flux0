@@ -1,0 +1,62 @@
+import asyncio
+from typing import Awaitable, Callable
+
+from fastapi import APIRouter, FastAPI, Request, Response, status
+from flux0_api.agents import mount_create_agent_route, mount_retrieve_agent_route
+from flux0_core.contextual_correlator import ContextualCorrelator
+from flux0_core.ids import gen_id
+from flux0_core.logging import Logger
+from lagom import Container
+from starlette.types import ASGIApp
+
+
+async def create_api_app(c: Container) -> ASGIApp:
+    logger = c[Logger]
+    correlator = c[ContextualCorrelator]
+
+    api_app = FastAPI()
+    api_app.state.container = c
+
+    @api_app.middleware("http")
+    async def handle_cancellation(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        try:
+            return await call_next(request)
+        except asyncio.CancelledError:
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @api_app.middleware("http")
+    async def add_correlation_id(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        request_id = gen_id()
+        with correlator.scope(f"RID({request_id})"):
+            with logger.operation(f"HTTP Request: {request.method} {request.url.path}"):
+                return await call_next(request)
+
+    api_router = APIRouter(prefix="/api")
+
+    api_agent_router = APIRouter(prefix="/agents")
+    mount_create_agent_route(api_agent_router)
+    mount_retrieve_agent_route(api_agent_router)
+    api_router.include_router(api_agent_router)
+
+    api_app.include_router(api_router)
+
+    @api_app.middleware("http")
+    async def handle_cancelled_error(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        try:
+            return await call_next(request)
+        except asyncio.CancelledError:
+            logger.warning("Request was cancelled.")
+            raise
+        except Exception as e:
+            logger.error(f"Unhandled exception: {e}", exc_info=True)
+            raise
+
+    return api_app
