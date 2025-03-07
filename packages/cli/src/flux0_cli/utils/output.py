@@ -2,6 +2,7 @@ import json
 from typing import Optional, Sequence, Union
 
 import click
+from jsonpath_ng import parse  # type: ignore
 from pydantic import BaseModel
 from rich.console import Console
 from rich.table import Table
@@ -21,7 +22,9 @@ class OutputFormatter:
         data_dicts = [model.model_dump() for model in models]
 
         if output_format == "json":
-            return json.dumps(data_dicts, default=str, indent=2)
+            return json.dumps(
+                data_dicts[0] if isinstance(data, BaseModel) else data_dicts, default=str, indent=2
+            )
 
         elif output_format == "table":
             if not data_dicts:
@@ -37,16 +40,21 @@ class OutputFormatter:
             return ""  # Prevent duplicate output
 
         elif output_format == "jsonpath":
-            # Force jsonpath usage when expression is provided
             if jsonpath_expr is None:
                 jsonpath_expr = "$"
-            if jsonpath_expr == "$":
-                return json.dumps(data_dicts, default=str, indent=2)
-            else:
-                from jsonpath_ng import parse  # type: ignore
 
-                expr = parse(jsonpath_expr)
-                matches = [match.value for d in data_dicts for match in expr.find(d)]
-                return json.dumps(matches, default=str, indent=2)
+            expr = parse(jsonpath_expr)
+            matches = [match.value for d in data_dicts for match in expr.find(d)]
+
+            # Always return JSON format
+            if not matches:
+                return json.dumps(None)  # Return null if no match
+            elif len(matches) == 1:
+                return json.dumps(matches[0], default=str, indent=2)  # Single value as JSON
+            else:
+                return json.dumps(
+                    matches, default=str, indent=2
+                )  # Always JSON array for multiple values
+
         else:
             raise click.ClickException(f"Unknown output format: {output_format}")

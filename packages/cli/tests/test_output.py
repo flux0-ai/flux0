@@ -1,4 +1,3 @@
-# Define a simple Pydantic model for testing.
 import json
 from typing import Any, List
 
@@ -15,13 +14,15 @@ class Item(BaseModel):
 
 
 def test_json_output() -> None:
+    """Ensure single model outputs as a JSON object, not an array."""
     item = Item(name="test", value=42)
     result: str = OutputFormatter.format(item, output_format="json")
-    expected: str = json.dumps([item.model_dump()], default=str, indent=2)
+    expected: str = json.dumps(item.model_dump(), default=str, indent=2)
     assert result == expected
 
 
 def test_json_output_multiple() -> None:
+    """Ensure multiple models output as a JSON array."""
     item1 = Item(name="test1", value=42)
     item2 = Item(name="test2", value=99)
     result: str = OutputFormatter.format([item1, item2], output_format="json")
@@ -48,23 +49,72 @@ def test_table_output(monkeypatch: pytest.MonkeyPatch) -> None:
     assert any(isinstance(renderable, Table) for renderable in captured)
 
 
-def test_jsonpath_with_root() -> None:
+def test_jsonpath_with_root_single() -> None:
     """
-    When using jsonpath with the root expression "$", the output should be the same as the json format.
+    JSONPath root "$" should return a JSON object when input is a single model.
     """
     item = Item(name="test", value=42)
     result: str = OutputFormatter.format(item, output_format="jsonpath", jsonpath_expr="$")
-    expected: str = json.dumps([item.model_dump()], default=str, indent=2)
+    expected: str = json.dumps(item.model_dump(), default=str, indent=2)
     assert result == expected
 
 
-def test_jsonpath_non_root() -> None:
+def test_jsonpath_with_root_multiple() -> None:
     """
-    For a non-root jsonpath expression (e.g. $.name), only the matching values should be returned.
+    JSONPath root "$" should return a JSON array when input is a list.
+    """
+    item1 = Item(name="test1", value=42)
+    item2 = Item(name="test2", value=99)
+    result: str = OutputFormatter.format(
+        [item1, item2], output_format="jsonpath", jsonpath_expr="$"
+    )
+    expected: str = json.dumps([item1.model_dump(), item2.model_dump()], default=str, indent=2)
+    assert result == expected
+
+
+def test_jsonpath_single_value() -> None:
+    """
+    JSONPath extracting a single value (e.g., '$.name') should return a string, not an array.
     """
     item = Item(name="test", value=42)
     result: str = OutputFormatter.format(item, output_format="jsonpath", jsonpath_expr="$.name")
-    expected: str = json.dumps(["test"], default=str, indent=2)
+    expected: str = json.dumps("test", default=str, indent=2)
+    assert result == expected
+
+
+def test_jsonpath_multiple_values() -> None:
+    """
+    JSONPath extracting multiple values should return an array.
+    """
+    item1 = Item(name="test1", value=42)
+    item2 = Item(name="test2", value=99)
+    result: str = OutputFormatter.format(
+        [item1, item2], output_format="jsonpath", jsonpath_expr="$.name"
+    )
+    expected: str = json.dumps(["test1", "test2"], default=str, indent=2)
+    assert result == expected
+
+
+def test_jsonpath_single_value_int() -> None:
+    """
+    JSONPath extracting a single integer value (e.g., '$.value') should return a number, not an array.
+    """
+    item = Item(name="test", value=42)
+    result: str = OutputFormatter.format(item, output_format="jsonpath", jsonpath_expr="$.value")
+    expected: str = json.dumps(42, default=str, indent=2)
+    assert result == expected
+
+
+def test_jsonpath_multiple_values_int() -> None:
+    """
+    JSONPath extracting multiple integer values should return an array.
+    """
+    item1 = Item(name="test1", value=42)
+    item2 = Item(name="test2", value=99)
+    result: str = OutputFormatter.format(
+        [item1, item2], output_format="jsonpath", jsonpath_expr="$.value"
+    )
+    expected: str = json.dumps([42, 99], default=str, indent=2)
     assert result == expected
 
 
