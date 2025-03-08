@@ -19,7 +19,12 @@ async def create_api_app(c: Container) -> ASGIApp:
     logger = c[Logger]
     correlator = c[ContextualCorrelator]
 
-    api_app = FastAPI()
+    api_app = FastAPI(
+        servers=[
+            {"url": "http://127.0.0.1:8080", "description": "Local server"},
+        ],
+    )
+
     api_app.state.container = c
 
     @api_app.middleware("http")
