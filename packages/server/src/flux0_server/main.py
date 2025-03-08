@@ -1,9 +1,13 @@
 import asyncio
+import importlib
+import os
 import sys
 import traceback
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import AsyncIterator
+from pathlib import Path
+from typing import AsyncIterator, Iterable
 
+import toml
 import uvicorn
 from flux0_api.auth import AuthHandler, AuthType, NoopAuthHandler
 from flux0_api.session_service import SessionService
@@ -88,6 +92,34 @@ async def setup_container(
     yield c
 
 
+@asynccontextmanager
+async def load_modules(
+    container: Container,
+    modules: Iterable[str],
+) -> AsyncIterator[None]:
+    imported_modules = []
+
+    for module_path in modules:
+        print("Current Working Directory:", os.getcwd())
+        module = importlib.import_module(module_path)
+        if not hasattr(module, "init_module") or not hasattr(module, "shutdown_module"):
+            raise StartupError(
+                f"Module '{module.__name__}' must define init_module(container: lagom.Container) and shutdown_module()"
+            )
+        imported_modules.append(module)
+
+    for m in imported_modules:
+        LOGGER.info(f"Initializing module '{m.__name__}'")
+        await m.init_module(container)
+
+    try:
+        yield
+    finally:
+        for m in reversed(imported_modules):
+            LOGGER.info(f"Shutting down module '{m.__name__}'")
+            await m.shutdown_module()
+
+
 async def serve_app(
     app: ASGIApp,
     port: int,
@@ -115,6 +147,19 @@ async def serve_app(
         LOGGER.info("Server is shutting down gracefuly")
 
 
+async def get_module_list_from_config() -> list[str]:
+    config_file = Path("flux0.toml")
+
+    if config_file.exists():
+        config = toml.load(config_file)
+        # Expecting structure of:
+        # [flux0]
+        # modules = ["module_1", "module_2"]
+        return list(config.get("flux0", {}).get("modules", []))
+
+    return []
+
+
 @asynccontextmanager
 async def setup_app(settings: Settings) -> AsyncIterator[ASGIApp]:
     exit_stack = AsyncExitStack()
@@ -123,6 +168,11 @@ async def setup_app(settings: Settings) -> AsyncIterator[ASGIApp]:
         setup_container(settings, exit_stack) as container,
         exit_stack,
     ):
+        modules = set(await get_module_list_from_config() + settings.modules)
+        if modules:
+            await exit_stack.enter_async_context(load_modules(container, modules))
+        else:
+            LOGGER.debug("No external modules defined")
         yield await create_api_app(container)
 
 
