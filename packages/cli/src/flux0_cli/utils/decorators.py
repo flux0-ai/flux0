@@ -1,9 +1,9 @@
 import functools
+import json
 from typing import Any, Callable, Optional, TypeVar, cast
 
 import click
-from flux0_client import NotFoundError
-from flux0_client.core.api_error import ApiError
+from flux0_client.models.apierror import APIError
 
 
 def validate_jsonpath(f: Callable[..., Any]) -> Callable[..., Any]:
@@ -125,10 +125,8 @@ def handle_exceptions(f: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return f(*args, **kwargs)
-        except NotFoundError as e:
-            click.echo(f"❌ {e.body.get('detail', 'Resource not found')}", err=True)
-        except ApiError as e:
-            click.echo(f"❌ {e.body.get('detail', 'Unknown error')}", err=True)
+        except APIError as e:
+            click.echo(f"❌ {json.loads(e.body).get('detail', 'Unknown error')}", err=True)
         except Exception as e:
             click.echo(f"⚠️ Unexpected error: {e}", err=True)
             return None  # Ensures the function always returns something

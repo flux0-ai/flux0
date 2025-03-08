@@ -41,7 +41,7 @@ class Flux0CLIContext:
     """Typed context object for Click CLI."""
 
     def __init__(self) -> None:
-        self.client: Flux0Client = Flux0Client(base_url="http://localhost:8080")
+        self.client: Flux0Client = Flux0Client()
 
 
 # Main CLI group

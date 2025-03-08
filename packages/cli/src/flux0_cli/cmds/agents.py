@@ -66,7 +66,7 @@ def create_agent(
     client: Flux0Client = cli_ctx.client
 
     # Pass the description if provided
-    agent = client.agents.create(name=name, type=agent_type, description=description)
+    agent = client.agents.create(name=name, type_=agent_type, description=description)
 
     result = OutputFormatter.format(agent, output_format=output, jsonpath_expr=jsonpath)
     if result:
