@@ -37,7 +37,10 @@ from flux0_api.types_events import (
     EventSourceDTO,
     EventTypeDTO,
     MinOffsetQuery,
+    SessionStream,
     TypesQuery,
+    emitted_event_chunk_example,
+    emitted_status_event_example,
     event_example,
 )
 from flux0_api.types_session import (
@@ -205,7 +208,7 @@ async def event_stream(
                         data=ed,
                         metadata=event.metadata,
                     )
-                    yield f"data: {json.dumps(event.__dict__)}\n\n"
+                    yield f"event: {event_type}\nid: {event.id}\ndata: {json.dumps(event.__dict__)}\n\n"
                 elif event.type == "message":
                     event_type = event.type
                     md = cast(MessageEventData, event.data)
@@ -233,6 +236,8 @@ async def event_stream(
                 else:
                     raise ValueError(f"Unknown event type: {event.type}")
             else:
+                # this is a chunk event
+                event_type = "chunk"
                 yield f"event: {event_type}\ndata: {json.dumps(event.__dict__)}\n\n"
     except asyncio.CancelledError:
         await session_service.cancel_processing_session_task(session_id)
@@ -347,45 +352,40 @@ def mount_create_event_and_stream_route(
         tags=[API_GROUP],
         status_code=status.HTTP_200_OK,
         operation_id="create_session_event",
+        summary="Create and stream session events",
+        description="Creates a new event in the specified session and streams upcoming events.",
+        response_class=StreamingResponse,
+        response_model=SessionStream,
         responses={
             status.HTTP_200_OK: {
                 "description": "Server-Sent Events (SSE) stream with structured event types",
                 "content": {
                     "text/event-stream": {
+                        "schema": {"$ref": "#/components/schemas/SessionStream"},
                         "examples": {
                             "status": {
                                 "summary": "Status Event",
                                 "value": (
                                     "event: status\n"
-                                    'data: {"id": "3383a5cc-3fa5-447d-8a83-85089fabf00f", '
-                                    '"source": "ai_agent", "kind": "status", '
-                                    '"correlation_id": "RID(fxjwGfAIYV)::u9ysV1pbcd", '
-                                    '"data": {"type": "status", "acknowledged_offset": 0, '
-                                    '"status": "processing", "data": {}}}\n\n'
+                                    + "data: "
+                                    + json.dumps(emitted_status_event_example)
                                 ),
                             },
-                            "tool": {
-                                "summary": "Tool Event",
-                                "value": (
-                                    "event: update\n"
-                                    'data: {"correlation_id": "RID(fxjwGfAIYV)::u9ysV1pbcd", '
-                                    '"event_id": "3383a5cc-3fa5-447d-8a83-85089fabf00f", '
-                                    '"seq": 0, "patches": [{"op": "add", "path": "/tool_calls", "value": []}, '
-                                    '{"op": "replace", "path": "/tool_calls/0/tool_name", "value": "search"}], '
-                                    '"metadata": {}, "timestamp": 1739376296.059654}\n\n'
-                                ),
-                            },
+                            # "tool": {
+                            #     "summary": "Tool Event",
+                            #     "value": (
+                            #         "event: tool\n"
+                            #         + "data: "
+                            #         + json.dumps(emitted_tool_event_example)
+                            #     ),
+                            # },
                             "chunk": {
                                 "summary": "Content Event",
                                 "value": (
-                                    "event: content\n"
-                                    'data: {"correlation_id": "RID(fxjwGfAIYV)::u9ysV1pbcd", '
-                                    '"event_id": "e936e0ba-1bfe-4f59-a061-2853c5517ade", '
-                                    '"seq": 0, "patches": [{"op": "add", "path": "/content/-", "value": "Hi"}], '
-                                    '"metadata": {}, "timestamp": 1739376296.060092}\n\n'
+                                    "event: chunk\ndata: " + json.dumps(emitted_event_chunk_example)
                                 ),
                             },
-                        }
+                        },
                     }
                 },
             },

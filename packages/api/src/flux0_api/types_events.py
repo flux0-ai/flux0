@@ -11,7 +11,7 @@ from typing import Annotated, List, Literal, Mapping, Optional, Sequence, TypeAl
 import dateutil.parser
 from fastapi import Path, Query
 from flux0_core.sessions import EventId, ToolCallPartType, ToolCallResultType
-from pydantic import Field
+from pydantic import Field, RootModel
 
 from flux0_api.common import (
     DEFAULT_MODEL_CONFIG,
@@ -255,57 +255,6 @@ class EventTypeDTO(DefaultBaseEnum):
 
 
 # ===========================
-# ChunkEvent
-# ===========================
-ChunkEventIdPath: TypeAlias = Annotated[
-    EventId,
-    Path(
-        description="Unique identifier for the chunk event",
-        examples=["bZKylRL4OP"],
-    ),
-]
-
-ChunkEventSeqField: TypeAlias = Annotated[
-    int,
-    Field(
-        description="Sequential position of the chunk",
-        examples=[0, 1, 2],
-        ge=0,
-    ),
-]
-
-ChunkEventCreatedAtField: TypeAlias = Annotated[
-    datetime,
-    Field(
-        description="When the session was created",
-        examples=[dateutil.parser.parse("2025-01-25T22:41:41")],
-    ),
-]
-
-chunk_event_example: ExampleJson = {
-    "event_id": event_id_example,
-    "correlation_id": correlation_id_example,
-    "seq": 0,
-    "patches": [{"op": "add", "path": "/-", "value": " currently"}],
-    "metadata": {"agent_id": agent_id_example, "agent_name": agent_name_examples[0]},
-    "timestamp": dateutil.parser.parse("2025-01-21T23:44:48").timestamp(),
-}
-
-
-class ChunkEventDTO(
-    DefaultBaseModel,
-    json_schema_extra={"example": chunk_event_example},
-):
-    id: ChunkEventIdPath
-    event_id: EventIdPath
-    correlation_id: EventCorrelationIdField
-    seq: ChunkEventSeqField
-    patches: list[JsonPatchOperationDTO]
-    metadata: Mapping[str, JSONSerializableDTO]
-    timestamp: float = field(default_factory=time.time)
-
-
-# ===========================
 # Event
 # ===========================
 EventCreatedAtField: TypeAlias = Annotated[
@@ -376,6 +325,137 @@ class EventsDTO(DefaultBaseModel):
     List of events that occurred within a session.
     """
     data: Sequence[EventDTO]
+
+
+# ===========================
+# ChunkEvent & EmittedEvent
+# ===========================
+ChunkEventIdPath: TypeAlias = Annotated[
+    EventId,
+    Path(
+        description="Unique identifier for the chunk event",
+        examples=["bZKylRL4OP"],
+    ),
+]
+
+ChunkEventSeqField: TypeAlias = Annotated[
+    int,
+    Field(
+        description="Sequential position of the chunk",
+        examples=[0, 1, 2],
+        ge=0,
+    ),
+]
+
+ChunkEventCreatedAtField: TypeAlias = Annotated[
+    datetime,
+    Field(
+        description="When the session was created",
+        examples=[dateutil.parser.parse("2025-01-25T22:41:41")],
+    ),
+]
+
+chunk_event_example: ExampleJson = {
+    "event_id": event_id_example,
+    "correlation_id": correlation_id_example,
+    "seq": 0,
+    "patches": [{"op": "add", "path": "/-", "value": " currently"}],
+    "metadata": {"agent_id": agent_id_example, "agent_name": agent_name_examples[0]},
+    "timestamp": dateutil.parser.parse("2025-01-21T23:44:48").timestamp(),
+}
+
+
+class ChunkEventDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": chunk_event_example},
+):
+    # TODO enable once issue https://github.com/flux0-ai/flux0/issues/44 is resolved
+    # id: ChunkEventIdPath
+    event_id: EventIdPath
+    correlation_id: EventCorrelationIdField
+    seq: ChunkEventSeqField
+    patches: list[JsonPatchOperationDTO]
+    metadata: Mapping[str, JSONSerializableDTO]
+    timestamp: float = field(default_factory=time.time)
+
+
+emitted_status_event_example: ExampleJson = {
+    "id": "F2srsmTGrN",
+    "source": "ai_agent",
+    "kind": "status",
+    "correlation_id": "RID(fxjwGfAIYV)::u9ysV1pbcd",
+    "data": {"type": "status", "acknowledged_offset": 0, "status": "processing", "data": {}},
+}
+
+emitted_tool_event_example: ExampleJson = {
+    "correlation_id": "RID(fxjwGfAIYV)::u9ysV1pbcd",
+    "event_id": "3383a5cc-3fa5-447d-8a83-85089fabf00f",
+    "seq": 0,
+    "patches": [
+        {"op": "add", "path": "/tool_calls", "value": []},
+        {"op": "replace", "path": "/tool_calls/0/tool_name", "value": "search"},
+    ],
+    "metadata": {},
+    "timestamp": 1739376296.059654,
+}
+
+emitted_event_chunk_example: ExampleJson = {
+    "correlation_id": "RID(fxjwGfAIYV)::u9ysV1pbcd",
+    "event_id": "e936e0ba-1bfe-4f59-a061-2853c5517ade",
+    "seq": 0,
+    "patches": [{"op": "add", "path": "/content/-", "value": "Hi"}],
+    "metadata": {},
+    "timestamp": 1739376296.060092,
+}
+
+emitted_event_examples: ExampleJson = [
+    emitted_status_event_example,
+    emitted_tool_event_example,
+    emitted_event_chunk_example,
+]
+
+
+class EmittedEventDTO(
+    DefaultBaseModel,
+    json_schema_extra={"examples": emitted_event_examples},
+):
+    id: EventIdPath
+    correlation_id: EventCorrelationIdField
+    type: EventTypeDTO
+    source: EventSourceDTO
+    # TODO at this point we don't always have an offset
+    # offset: EventOffsetField
+    data: Annotated[
+        Union[MessageEventDataDTO, StatusEventDataDTO, ToolEventDataDTO],
+        Field(discriminator="type"),
+    ]
+    metadata: Optional[Mapping[str, JSONSerializableDTO]] = None
+    # TODO at this point nothing sets creation time
+    # created_at: EventCreatedAtField
+
+
+# ===========================
+# Event Stream
+# ===========================
+
+
+class ChunkEventStream(DefaultBaseModel):
+    # TODO enable once issue https://github.com/flux0-ai/flux0/issues/44 is resolved
+    # id: ChunkEventIdPath
+    event: Literal["chunk"]
+    data: ChunkEventDTO
+
+
+# NOTE: best practice would be to split these into separate models but then we move away from how persisted events look like
+class EmittedEventStream(DefaultBaseModel):
+    id: EventIdPath
+    # event: Literal["status", "message", "tool"]
+    event: Literal["status"]
+    data: EmittedEventDTO
+
+
+class SessionStream(RootModel[Union[ChunkEventStream, EmittedEventStream]]):
+    root: Union[ChunkEventStream, EmittedEventStream] = Field(..., discriminator="event")
 
 
 # ===========================
