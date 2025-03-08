@@ -65,6 +65,7 @@ def mount_create_session_route(
         "",
         tags=[API_GROUP],
         summary="Create a new session",
+        operation_id="create_session",
         response_model=SessionDTO,
         status_code=201,
         response_model_exclude_none=True,
@@ -465,7 +466,7 @@ def mount_list_session_events_route(
     @router.get(
         "/{session_id}/events",
         tags=[API_GROUP],
-        operation_id="list_events",
+        operation_id="list_session_events",
         response_model=EventsDTO,
         responses={
             status.HTTP_200_OK: {
