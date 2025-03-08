@@ -95,5 +95,6 @@ def apigen_config(group_name: str, method_name: str) -> Mapping[str, Any]:
         "openapi_extra": {
             "x-fern-sdk-group-name": group_name,
             "x-fern-sdk-method-name": method_name,
+            "x-speakeasy-name-override": method_name,
         }
     }
