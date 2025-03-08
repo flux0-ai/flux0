@@ -9,6 +9,10 @@ from flux0_cli.utils.decorators import (
 )
 from flux0_cli.utils.output import OutputFormatter
 from flux0_client import Flux0Client
+from flux0_client.models.chunkeventstream import ChunkEventStream
+from flux0_client.models.emittedeventstream import EmittedEventStream
+from flux0_client.models.eventsourcedto import EventSourceDTO
+from flux0_client.models.eventtypedto import EventTypeDTO
 
 
 @click.group()
@@ -49,3 +53,23 @@ def get_session(ctx: click.Context, id: str, output: str, jsonpath: Optional[str
     result = OutputFormatter.format(session, output_format=output, jsonpath_expr=jsonpath)
     if result:
         click.echo(result)
+
+
+@sessions.command()
+@click.pass_context
+@click.option("--session-id", required=True, help="ID of the session to interact with")
+@click.option("--content", required=True, help="Content of the event")
+def create_event(ctx: click.Context, session_id: str, content: str) -> None:
+    cli_ctx: Flux0CLIContext = ctx.obj
+    client: Flux0Client = cli_ctx.client
+    resp = client.sessions.create_event(
+        session_id=session_id,
+        type_=EventTypeDTO.MESSAGE,
+        source=EventSourceDTO.USER,
+        content=content,
+    )
+    for event in resp.generator:
+        if isinstance(event, EmittedEventStream):
+            print(f"{event.EVENT} : {event.data}")
+        elif isinstance(event, ChunkEventStream):
+            print(f"chunk event: {event.data.patches}")

@@ -20,9 +20,10 @@ from flux0_core.storage.nanodb_memory import (
 from flux0_core.storage.types import StorageType
 from flux0_core.users import UserStore
 from flux0_nanodb.memory import MemoryDocumentDatabase
+from flux0_stream.emitter.api import EventEmitter
 from flux0_stream.emitter.memory import MemoryEventEmitter
 from flux0_stream.store.memory import MemoryEventStore
-from lagom import Container
+from lagom import Container, Singleton
 from starlette.types import ASGIApp
 
 from flux0_server.app import create_api_app
@@ -57,8 +58,10 @@ async def setup_container(
     if settings.stores_type == StorageType.NANODB_MEMORY:
         db = MemoryDocumentDatabase()
         event_store = await exit_stack.enter_async_context(MemoryEventStore())
-        event_emitter = await exit_stack.enter_async_context(
-            MemoryEventEmitter(event_store=event_store, logger=LOGGER)
+        c[EventEmitter] = Singleton(
+            await exit_stack.enter_async_context(
+                MemoryEventEmitter(event_store=event_store, logger=LOGGER)
+            )
         )
         user_store = await exit_stack.enter_async_context(UserDocumentStore(db))
         agent_store = await exit_stack.enter_async_context(AgentDocumentStore(db))
@@ -69,7 +72,7 @@ async def setup_container(
             session_store=session_store,
             background_task_service=BACKGROUND_TASK_SERVICE,
             agent_runner_factory=ContainerAgentRunnerFactory(c),
-            event_emitter=event_emitter,
+            event_emitter=c[EventEmitter],
         )
         c[UserStore] = user_store
         c[AgentStore] = agent_store
