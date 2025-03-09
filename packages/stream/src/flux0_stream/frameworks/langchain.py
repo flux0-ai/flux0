@@ -3,13 +3,15 @@ import time
 from typing import AsyncIterator, Dict, Optional, cast
 
 from flux0_core.agents import Agent
+from flux0_core.logging import Logger
 from flux0_core.sessions import TOOL_CALL_PART_TYPE, EventId, StatusEventData
 from flux0_core.types import ensure_json_serializable
-from flux0_stream.emitter.api import EventEmitter
-from flux0_stream.types import ChunkEvent, JsonPatchOperation
 from langchain_core.messages import AIMessage, ToolMessage, message_chunk_to_message
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.runnables.schema import StreamEvent
+
+from flux0_stream.emitter.api import EventEmitter
+from flux0_stream.types import ChunkEvent, JsonPatchOperation
 
 
 class RunContext:
@@ -42,6 +44,7 @@ async def handle_event(
     correlation_id: str,
     event: StreamEvent,
     event_emitter: EventEmitter,
+    logger: Logger,
     run_ctx: RunContext,
 ) -> None:
     if event["event"] == "on_chat_model_start":
@@ -393,7 +396,7 @@ async def handle_event(
 
 
 async def filter_and_map_events(
-    aiter: AsyncIterator[StreamEvent],
+    aiter: AsyncIterator[StreamEvent], logger: Logger
 ) -> AsyncIterator[StreamEvent]:
     root_run_id: Optional[str] = None
 
@@ -420,5 +423,9 @@ async def filter_and_map_events(
             yield event
         elif event["event"] == "on_tool_end":
             yield event
+        elif event["event"] == "on_prompt_start":
+            pass
+        elif event["event"] == "on_prompt_end":
+            pass
         else:
-            raise ValueError(f"Not {event['event']} not implemented")
+            logger.info(f"Unknown event {event['event']}")

@@ -4,6 +4,7 @@ from typing import AsyncIterator, List, cast
 
 import pytest
 from flux0_core.agents import Agent
+from flux0_core.logging import Logger
 from flux0_core.sessions import StatusEventData
 from flux0_stream.emitter.api import EventEmitter
 from flux0_stream.frameworks.langchain import (
@@ -37,6 +38,7 @@ def langchain_events(request: pytest.FixtureRequest) -> AsyncIterator[StreamEven
 
 @pytest.mark.asyncio
 async def test_langchain_streaming(
+    logger: Logger,
     agent: Agent,
     event_emitter: EventEmitter,
     langchain_events: AsyncIterator[StreamEvent],
@@ -61,10 +63,11 @@ async def test_langchain_streaming(
     event_emitter.subscribe_processed(correlation_id, processed_subscriber)
 
     run_ctx = RunContext(last_known_event_offset=0)
-    async for event in filter_and_map_events(langchain_events):
+    async for event in filter_and_map_events(langchain_events, logger):
         await handle_event(
             agent=agent,
             correlation_id=correlation_id,
+            logger=logger,
             event=event,
             event_emitter=event_emitter,
             run_ctx=run_ctx,
