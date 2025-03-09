@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Type, TypeVar
+from typing import Callable, Optional, Sequence, Type, TypeVar
 
 from flux0_core.agent_runners.context import Context
 from flux0_core.agents import Agent, AgentId, AgentStore, AgentType
 from flux0_core.contextual_correlator import ContextualCorrelator
-from flux0_core.sessions import Session, SessionId, SessionStore
+from flux0_core.sessions import Event, Session, SessionId, SessionStore
 from flux0_stream.emitter.api import EventEmitter
 
 
@@ -23,6 +23,9 @@ class Deps:
 
     async def read_session(self, session_id: SessionId) -> Optional[Session]:
         return await self._session_store.read_session(session_id)
+
+    async def list_session_events(self, session_id: SessionId) -> Sequence[Event]:
+        return await self._session_store.list_events(session_id)
 
     async def read_agent(self, agent_id: AgentId) -> Optional[Agent]:
         return await self._agent_store.read_agent(agent_id)
