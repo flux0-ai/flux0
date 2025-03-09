@@ -14,7 +14,9 @@ class EnvType(enum.Enum):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="FLUX0_", enable_decoding=False)
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="FLUX0_", enable_decoding=False, extra="allow"
+    )
     env: EnvType = Field(default=EnvType.PRODUCTION)
     port: int = Field(default=8080)
     auth_type: AuthType = Field(default_factory=lambda: AuthType.NOOP)
