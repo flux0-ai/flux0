@@ -72,6 +72,7 @@ async def setup_container(
         session_store = await exit_stack.enter_async_context(SessionDocumentStore(db))
         c[SessionService] = SessionService(
             contextual_correlator=CORRELATOR,
+            logger=LOGGER,
             agent_store=agent_store,
             session_store=session_store,
             background_task_service=BACKGROUND_TASK_SERVICE,

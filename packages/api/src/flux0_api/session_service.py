@@ -7,6 +7,7 @@ from flux0_core.agents import Agent, AgentStore
 from flux0_core.background_tasks_service import BackgroundTaskService
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.ids import gen_id
+from flux0_core.logging import Logger
 from flux0_core.sessions import (
     Event,
     EventSource,
@@ -26,6 +27,7 @@ class SessionService:
     def __init__(
         self,
         contextual_correlator: ContextualCorrelator,
+        logger: Logger,
         agent_store: AgentStore,
         session_store: SessionStore,
         background_task_service: BackgroundTaskService,
@@ -33,6 +35,7 @@ class SessionService:
         event_emitter: EventEmitter,
     ):
         self._correlator = contextual_correlator
+        self._logger = logger
         self._agent_store = agent_store
         self._session_store = session_store
         self._background_task_service = background_task_service
@@ -118,6 +121,7 @@ class SessionService:
             ),
             Deps(
                 correlator=self._correlator,
+                logger=self._logger,
                 event_emitter=self._event_emitter,
                 agent_store=self._agent_store,
                 session_store=self._session_store,

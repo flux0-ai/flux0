@@ -6,7 +6,7 @@ import pytest
 from fastapi import FastAPI
 from flux0_api.auth import NoopAuthHandler
 from flux0_api.session_service import SessionService
-from flux0_core.agent_runners.api import AgentRunner, AgentRunnerFactory
+from flux0_core.agent_runners.api import AgentRunner, AgentRunnerFactory, Deps
 from flux0_core.agent_runners.context import Context
 from flux0_core.agents import Agent, AgentId, AgentStore, AgentType
 from flux0_core.background_tasks_service import BackgroundTaskService
@@ -110,7 +110,7 @@ def background_task_service(logger: Logger) -> BackgroundTaskService:
 
 # Dummy implementation of AgentRunner
 class DummyAgentRunner(AgentRunner):
-    async def run(self, context: Context, event_emitter: EventEmitter) -> bool:
+    async def run(self, context: Context, deps: Deps) -> bool:
         return True
 
 
@@ -144,6 +144,7 @@ async def event_emitter(logger: Logger) -> AsyncGenerator[EventEmitter, None]:
 @pytest.fixture
 def session_service(
     correlator: ContextualCorrelator,
+    logger: Logger,
     session_store: SessionStore,
     agent_store: AgentStore,
     background_task_service: BackgroundTaskService,
@@ -152,6 +153,7 @@ def session_service(
 ) -> SessionService:
     return SessionService(
         contextual_correlator=correlator,
+        logger=logger,
         agent_store=agent_store,
         session_store=session_store,
         background_task_service=background_task_service,
