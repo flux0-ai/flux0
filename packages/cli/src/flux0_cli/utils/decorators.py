@@ -63,27 +63,29 @@ def list_options(group: click.Group, command_name: str) -> Callable[[F], F]:
     """Decorator to apply common options for 'list' commands dynamically."""
 
     def decorator(func: F) -> F:
-        @group.command(command_name)
-        @click.option(
+        decorated_func: Callable[..., Any] = func  # Explicitly cast to avoid mypy errors
+
+        decorated_func = click.option(
             "--jsonpath",
             type=str,
             help="JSONPath expression (automatically sets output to jsonpath)",
-        )
-        @click.option(
+        )(decorated_func)
+
+        decorated_func = click.option(
             "-o",
             "--output",
             type=click.Choice(["json", "table", "jsonpath"]),
             default="table",
             help="Output format (automatically switches to jsonpath if --jsonpath is used)",
-        )
-        @validate_jsonpath
-        @click.pass_context
-        @functools.wraps(func)
-        def wrapper(ctx: click.Context, output: str, jsonpath: Optional[str]) -> Any:
-            return func(ctx, output, jsonpath)
+        )(decorated_func)
 
-        functools.update_wrapper(wrapper, func)  # Preserve function metadata
-        return cast(F, wrapper)  # Ensure correct return type for Mypy
+        decorated_func = validate_jsonpath(decorated_func)
+        decorated_func = click.pass_context(decorated_func)
+
+        # Register the command with the group
+        group.command(name=command_name)(decorated_func)
+
+        return cast(F, decorated_func)  # Cast back to F to satisfy type checks
 
     return decorator
 

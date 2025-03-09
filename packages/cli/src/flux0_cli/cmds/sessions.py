@@ -6,6 +6,8 @@ from flux0_cli.utils.decorators import (
     create_options,
     get_options,
     handle_exceptions,
+    list_options,
+    validate_jsonpath,
 )
 from flux0_cli.utils.output import OutputFormatter
 from flux0_client import Flux0Client
@@ -73,3 +75,19 @@ def create_event(ctx: click.Context, session_id: str, content: str) -> None:
             print(f"{event.EVENT} : {event.data}")
         elif isinstance(event, ChunkEventStream):
             print(f"chunk event: {event.data.patches}")
+
+
+@list_options(sessions, "list-events")
+@click.option("--session-id", required=True, help="ID of the session to interact with")
+@validate_jsonpath
+def list_session_events(
+    ctx: click.Context, session_id: str, output: str, jsonpath: Optional[str]
+) -> None:
+    """List session events"""
+    cli_ctx: Flux0CLIContext = ctx.obj
+    client: Flux0Client = cli_ctx.client
+    response = client.sessions.list_events(session_id=session_id)
+
+    result = OutputFormatter.format(response.data, output_format=output, jsonpath_expr=jsonpath)
+    if result:
+        click.echo(result)
