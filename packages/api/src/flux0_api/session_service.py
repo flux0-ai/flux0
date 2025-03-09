@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional, Union
 
@@ -64,7 +65,10 @@ class SessionService:
         return session
 
     async def dispatch_processing_task(
-        self, session: Session, agent: Agent, correlation_id: Optional[str] = None
+        self,
+        session: Session,
+        agent: Agent,
+        correlation_id: Optional[str] = None,
     ) -> str:
         if correlation_id is None:
             with self._correlator.scope(gen_id()):
@@ -90,6 +94,7 @@ class SessionService:
         data: Union[MessageEventData, StatusEventData, ToolEventData],
         source: EventSource = "user",
         trigger_processing: bool = True,
+        wait_event: Optional[asyncio.Event] = None,
     ) -> Event:
         if trigger_processing:
             with self._correlator.scope(gen_id()):
@@ -100,7 +105,19 @@ class SessionService:
                     correlation_id=self._correlator.correlation_id,
                     data=data,
                 )
-                await self.dispatch_processing_task(session, agent, self._correlator.correlation_id)
+
+                # If no wait_event was provided, default to immediate processing.
+                if wait_event is None:
+                    wait_event = asyncio.Event()
+                    wait_event.set()
+
+                # Schedule a background task that waits for the signal
+                # before dispatching processing, but don’t await it here.
+                asyncio.create_task(
+                    self._dispatch_processing_task_when_ready(
+                        wait_event, session, agent, self._correlator.correlation_id
+                    )
+                )
         else:
             event = await self._session_store.create_event(
                 session_id=session.id,
@@ -127,3 +144,15 @@ class SessionService:
                 session_store=self._session_store,
             ),
         )
+
+    async def _dispatch_processing_task_when_ready(
+        self,
+        wait_event: asyncio.Event,
+        session: Session,
+        agent: Agent,
+        correlation_id: str,
+    ) -> None:
+        # Wait asynchronously for the external signal (e.g., subscriber ready)
+        await wait_event.wait()
+
+        await self.dispatch_processing_task(session, agent, correlation_id)

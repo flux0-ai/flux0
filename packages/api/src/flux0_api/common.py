@@ -67,7 +67,7 @@ DEFAULT_MODEL_CONFIG = ConfigDict(
 
 class DefaultBaseModel(BaseModel):
     """
-    Base class for all WeTale Pydantic models.
+    Base class for all flux0 Pydantic models.
     """
 
     model_config = DEFAULT_MODEL_CONFIG

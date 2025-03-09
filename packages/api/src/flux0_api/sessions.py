@@ -173,6 +173,7 @@ async def event_stream(
     session_store: SessionStore,
     session_service: SessionService,
     event_emitter: EventEmitter,
+    subscription_ready: asyncio.Event,
 ) -> AsyncGenerator[str, None]:
     queue: asyncio.Queue[Union[ChunkEvent, EmittedEvent]] = asyncio.Queue()
 
@@ -188,6 +189,7 @@ async def event_stream(
     print("subscribed to correlation_id", correlation_id)
     event_emitter.subscribe_processed(correlation_id, subscriber)
     event_emitter.subscribe_final(correlation_id, subscriber_final)
+    subscription_ready.set()
 
     try:
         while True:
@@ -273,6 +275,7 @@ async def _add_user_message(
     session_store: SessionStore,
     session_service: SessionService,
     # moderation: Moderation = Moderation.NONE,
+    subscription_ready: asyncio.Event,
 ) -> EventDTO:
     if not params.content:
         raise HTTPException(
@@ -328,6 +331,7 @@ async def _add_user_message(
         data=message_data,
         source="user",
         trigger_processing=True,
+        wait_event=subscription_ready,
     )
 
     return event_to_dto(event)
@@ -418,6 +422,7 @@ def mount_create_event_and_stream_route(
                 detail="Only message events can currently be added manually",
             )
 
+        subscription_ready = asyncio.Event()
         if params.source == EventSourceDTO.USER:
             event = await _add_user_message(
                 session_id,
@@ -427,10 +432,16 @@ def mount_create_event_and_stream_route(
                 session_store,
                 session_service,
                 # moderation,
+                subscription_ready,
             )
             return StreamingResponse(
                 event_stream(
-                    session_id, event.correlation_id, session_store, session_service, event_emitter
+                    session_id,
+                    event.correlation_id,
+                    session_store,
+                    session_service,
+                    event_emitter,
+                    subscription_ready,
                 ),
                 media_type="text/event-stream",
             )
