@@ -173,15 +173,20 @@ async def consume_streaming_response(response: StreamingResponse) -> List[Dict[s
         elif not isinstance(chunk, str):
             continue  # Skip unexpected chunk types
 
-        # Ensure chunk is a string before processing
-        for line in chunk.split("\n\n"):  # SSE messages are separated by double newlines
-            if line.startswith("data: "):
-                json_data = line[6:].strip()  # Remove "data: " prefix
+            # Process each SSE event block
+        event_data = ""
+        for line in chunk.split("\n"):
+            line = line.strip()
+
+            if line.startswith("data: "):  # Extract only JSON data
+                event_data = line[6:].strip()  # Remove "data: " prefix
+
                 try:
-                    event = json.loads(json_data)  # Parse JSON
-                    events.append(event)  # Store parsed event
+                    parsed_json = json.loads(event_data)  # Parse JSON
+                    events.append(parsed_json)
                 except json.JSONDecodeError as e:
-                    print(f"JSON decode error: {e}, data: {json_data}")  # Debugging
+                    print(f"JSON decode error: {e}, data: {event_data}")  # Debugging
+
     return events
 
 
