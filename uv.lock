@@ -6,7 +6,6 @@ members = [
     "flux0",
     "flux0-api",
     "flux0-cli",
-    "flux0-client",
     "flux0-core",
     "flux0-nanodb",
     "flux0-server",
@@ -131,6 +130,15 @@ wheels = [
 ]
 
 [[package]]
+name = "eval-type-backport"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/30/ea/8b0ac4469d4c347c6a385ff09dc3c048c2d021696664e26c7ee6791631b5/eval_type_backport-0.2.2.tar.gz", hash = "sha256:f0576b4cf01ebb5bd358d02314d31846af5e07678387486e2c798af0e7d849c1", size = 9079 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/31/55cd413eaccd39125368be33c46de24a1f639f2e12349b0361b4678f3915/eval_type_backport-0.2.2-py3-none-any.whl", hash = "sha256:cb6ad7c393517f476f96d456d0412ea80f0a8cf96f6892834cd9340149111b0a", size = 5830 },
+]
+
+[[package]]
 name = "fastapi"
 version = "0.115.8"
 source = { registry = "https://pypi.org/simple" }
@@ -229,7 +237,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.8" },
-    { name = "flux0-client", editable = "packages/client" },
+    { name = "flux0-client", git = "https://github.com/flux0-ai/flux0-client-python" },
     { name = "jsonpath-ng", specifier = ">=1.7.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "rich", specifier = ">=13.9.4" },
@@ -238,18 +246,13 @@ requires-dist = [
 [[package]]
 name = "flux0-client"
 version = "0.0.1"
-source = { editable = "packages/client" }
+source = { git = "https://github.com/flux0-ai/flux0-client-python#50c4feee5366851810af871f7ca1310e3b791d0b" }
 dependencies = [
+    { name = "eval-type-backport" },
     { name = "httpx" },
     { name = "pydantic" },
+    { name = "python-dateutil" },
     { name = "typing-inspection" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "pydantic", specifier = ">=2.10.6" },
-    { name = "typing-inspection", specifier = ">=0.4.0" },
 ]
 
 [[package]]
