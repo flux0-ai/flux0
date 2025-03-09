@@ -20,6 +20,7 @@ class BackgroundTaskService:
         self._lock = asyncio.Lock()
 
     async def __aenter__(self) -> Self:
+        self._collector_task = asyncio.create_task(self._run_collector())
         return self
 
     async def __aexit__(
@@ -127,3 +128,11 @@ class BackgroundTaskService:
             self._logger.warning(
                 f"{type(self).__name__}: Task raised an exception: {''.join(traceback.format_exception_only(type(exc), exc)).strip()}"
             )
+
+    async def _run_collector(self) -> None:
+        try:
+            while True:
+                await asyncio.sleep(self._garbage_collection_interval)
+                await self.collect()
+        except asyncio.CancelledError:
+            pass

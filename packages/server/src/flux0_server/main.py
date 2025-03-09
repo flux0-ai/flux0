@@ -41,7 +41,7 @@ CORRELATOR = ContextualCorrelator()
 LOGGER = StdoutLogger(
     correlator=CORRELATOR, log_level=LogLevel.INFO, json=settings.env != EnvType.DEVELOPMENT
 )
-BACKGROUND_TASK_SERVICE = BackgroundTaskService(LOGGER)
+BACKGROUND_TASK_SERVICE: BackgroundTaskService
 
 
 class StartupError(Exception):
@@ -66,6 +66,10 @@ async def setup_container(
             await exit_stack.enter_async_context(
                 MemoryEventEmitter(event_store=event_store, logger=LOGGER)
             )
+        )
+        global BACKGROUND_TASK_SERVICE
+        BACKGROUND_TASK_SERVICE = await exit_stack.enter_async_context(
+            BackgroundTaskService(LOGGER)
         )
         user_store = await exit_stack.enter_async_context(UserDocumentStore(db))
         agent_store = await exit_stack.enter_async_context(AgentDocumentStore(db))
