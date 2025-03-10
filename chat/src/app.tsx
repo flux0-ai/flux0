@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
 function App() {
@@ -13,7 +14,7 @@ function App() {
     fetchData().catch(console.error);
   }, []);
 
-  return <div>{JSON.stringify(data)}</div>;
+  return <Button variant="secondary">{JSON.stringify(data)}</Button>;
 }
 
 export default App;
