@@ -7,6 +7,6 @@ const container = document.getElementById("root");
 if (!container) throw new Error("No container element");
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <App />,
   </StrictMode>,
 );

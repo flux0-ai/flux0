@@ -1,20 +1,17 @@
-import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { routeTree } from "./routeTree.gen";
+
+const router = createRouter({ routeTree });
+
+// Register the router instance for type safety
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
 
 function App() {
-  const [data, setData] = useState<unknown>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const response = await fetch("/api/agents");
-      const result = (await response.json()) as unknown;
-      setData(result);
-    };
-
-    fetchData().catch(console.error);
-  }, []);
-
-  return <Button variant="secondary">{JSON.stringify(data)}</Button>;
+  return <RouterProvider router={router} basepath="/chat" />;
 }
 
 export default App;

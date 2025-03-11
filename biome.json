@@ -1,22 +1,16 @@
 {
-    "$schema": "https://biomejs.dev/schemas/1.5.3/schema.json",
-    "files": {
-        "ignore": [
-            "node_modules/**",
-            "dist/**",
-            "storybook-static/**",
-            "storybook/public",
-            "coverage"
-        ]
-    },
-    "formatter": {
-        "enabled": true,
-        "indentStyle": "space"
-    },
-    "linter": {
-        "enabled": true,
-        "rules": {
-            "recommended": true
-        }
+  "$schema": "https://biomejs.dev/schemas/1.5.3/schema.json",
+  "files": {
+    "ignore": ["node_modules/**", "dist/**", "src/routeTree.gen.ts"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space"
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
     }
+  }
 }
