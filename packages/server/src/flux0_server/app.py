@@ -1,7 +1,10 @@
 import asyncio
-from typing import Awaitable, Callable
+import os
+from typing import Any, Awaitable, Callable
 
 from fastapi import APIRouter, FastAPI, Request, Response, status
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from flux0_api.agents import (
     mount_create_agent_route,
     mount_list_agents_route,
@@ -18,6 +21,20 @@ from flux0_core.ids import gen_id
 from flux0_core.logging import Logger
 from lagom import Container
 from starlette.types import ASGIApp
+
+
+class SPAStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope: Any) -> Response:
+        assert isinstance(self.directory, str), "Static directory must be a string"
+
+        full_path = os.path.join(self.directory, path)
+
+        # If the file exists, serve it
+        if os.path.isfile(full_path):
+            return await super().get_response(path, scope)
+
+        # If the file does NOT exist, serve `index.html`
+        return await super().get_response("index.html", scope)
 
 
 async def create_api_app(c: Container) -> ASGIApp:
@@ -51,6 +68,16 @@ async def create_api_app(c: Container) -> ASGIApp:
         with correlator.scope(f"RID({request_id})"):
             with logger.operation(f"HTTP Request: {request.method} {request.url.path}"):
                 return await call_next(request)
+
+    static_dir = os.path.join(
+        os.path.dirname(__file__), os.environ.get("FLUX0_STATIC_DIR", "/app/chat")
+    )
+    if os.path.isdir(static_dir):
+        api_app.mount("/chat", SPAStaticFiles(directory=static_dir), name="static")
+
+    @api_app.get("/", include_in_schema=False)
+    async def root() -> Response:
+        return RedirectResponse("/chat")
 
     api_router = APIRouter(prefix="/api")
 
