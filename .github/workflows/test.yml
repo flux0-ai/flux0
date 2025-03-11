@@ -1,0 +1,30 @@
+name: Test
+
+on:
+    pull_request:
+      branches: [ "develop" ]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout branch commit
+              uses: actions/checkout@v4
+
+            - name: Install uv with caching enabled
+              uses: astral-sh/setup-uv@v5
+              with:
+                version: "0.6.5"
+                enable-cache: true
+                cache-dependency-glob: "uv.lock"
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                python-version-file: "pyproject.toml"
+
+            - name: Install the project
+              run: uv sync --all-packages --all-extras
+
+            - name: Run tests
+              run: uv run ./scripts/test.py
