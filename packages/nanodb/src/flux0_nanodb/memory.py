@@ -1,10 +1,12 @@
-from dataclasses import asdict, is_dataclass
-from typing import Any, Optional, Sequence, Type, cast
+from typing import Any, Mapping, Optional, Sequence, Type, cast
 
 from flux0_nanodb.api import DocumentCollection, DocumentDatabase
+from flux0_nanodb.common import validate_is_total
+from flux0_nanodb.projection import Projection, apply_projection
 from flux0_nanodb.query import QueryFilter, matches_query
 from flux0_nanodb.types import (
     DeleteResult,
+    DocumentID,
     InsertOneResult,
     TDocument,
 )
@@ -16,24 +18,34 @@ class MemoryDocumentCollection(DocumentCollection[TDocument]):
         self._schema = schema
         self._documents: list[TDocument] = []
 
-    async def find(self, filters: Optional[QueryFilter] = None) -> Sequence[TDocument]:
+    async def find(
+        self,
+        filters: Optional[QueryFilter] = None,
+        projection: Optional[Mapping[str, Projection]] = None,
+    ) -> Sequence[TDocument]:
+        docs: Sequence[TDocument] = []
         if filters is None:
-            return self._documents
+            docs = self._documents
+        else:
+            # Convert each document to a dict and evaluate the filter.
+            docs = [doc for doc in self._documents if matches_query(filters, doc)]
 
-        # Convert each document to a dict and evaluate the filter.
-        return [
-            doc
-            for doc in self._documents
-            if matches_query(filters, asdict(doc) if is_dataclass(doc) else vars(doc))
-        ]
+        if projection:
+            docs = [cast(TDocument, apply_projection(doc, projection)) for doc in docs]
+
+        return docs
 
     async def insert_one(self, document: TDocument) -> InsertOneResult:
         self._documents.append(document)
-        return InsertOneResult(acknowledged=True, inserted_id=document.id)
+        validate_is_total(document, self._schema)
+        inserted_id: Optional[DocumentID] = document.get("id")  # type: ignore
+        if inserted_id is None:
+            raise ValueError("Document is missing an 'id' field")
+        return InsertOneResult(acknowledged=True, inserted_id=inserted_id)
 
     async def delete_one(self, filters: QueryFilter) -> DeleteResult[TDocument]:
         for i, doc in enumerate(self._documents):
-            if matches_query(filters, asdict(doc) if is_dataclass(doc) else vars(doc)):
+            if matches_query(filters, doc):
                 removed = self._documents.pop(i)
                 return DeleteResult(acknowledged=True, deleted_count=1, deleted_document=removed)
         return DeleteResult(acknowledged=True, deleted_count=0, deleted_document=None)

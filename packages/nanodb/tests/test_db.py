@@ -1,5 +1,5 @@
 import uuid
-from dataclasses import dataclass
+from typing import TypedDict
 
 import pytest
 
@@ -9,13 +9,13 @@ from flux0_nanodb.api import (
     DocumentDatabase,
 )
 from flux0_nanodb.memory import MemoryDocumentDatabase
+from flux0_nanodb.projection import Projection
 from flux0_nanodb.query import Comparison, QueryFilter
-from flux0_nanodb.types import DeleteResult, Document, DocumentID, DocumentVersion, InsertOneResult
+from flux0_nanodb.types import DeleteResult, DocumentID, DocumentVersion, InsertOneResult
 
 
 # A test document that extends our base Document.
-@dataclass(frozen=True)
-class SimpleDocument(Document):
+class SimpleDocument(TypedDict, total=False):
     name: str
     value: int
     id: DocumentID
@@ -49,6 +49,10 @@ async def test_insert_and_find(collection: DocumentCollection[SimpleDocument]) -
     found = await collection.find(query)
     assert len(found) == 1
     assert found[0] == doc
+
+    # Query for the document with projection.
+    found = await collection.find(query, projection={"name": Projection.INCLUDE})
+    assert found[0] == SimpleDocument(name="Alice")
 
 
 @pytest.mark.asyncio

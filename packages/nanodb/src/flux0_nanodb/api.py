@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, Optional, Sequence, Type
+from typing import Generic, Mapping, Optional, Sequence, Type
 
+from flux0_nanodb.projection import Projection
 from flux0_nanodb.query import QueryFilter
 from flux0_nanodb.types import DeleteResult, InsertOneResult, TDocument
 
@@ -36,9 +37,14 @@ class DocumentDatabase(ABC):
 
 class DocumentCollection(ABC, Generic[TDocument]):
     @abstractmethod
-    async def find(self, filters: Optional[QueryFilter]) -> Sequence[TDocument]:
+    async def find(
+        self,
+        filters: Optional[QueryFilter],
+        projection: Optional[Mapping[str, Projection]] = None,
+    ) -> Sequence[TDocument]:
         """
-        Find all documents that match the provided filters.
+        Find all documents that match the optional filters.
+        Optionally apply a projection to return only specified fields
         """
         pass
 
