@@ -102,3 +102,34 @@ async def test_delete_collection(db: DocumentDatabase) -> None:
     await db.delete_collection("to_delete")
     with pytest.raises(ValueError):
         await db.get_collection("to_delete", SimpleDocument)
+
+
+@pytest.mark.asyncio
+async def test_find_with_pagination(collection: DocumentCollection[SimpleDocument]) -> None:
+    # Insert multiple documents with predictable values
+    docs = []
+    for i in range(5):
+        doc_id = DocumentID(str(uuid.uuid4()))
+        version = DocumentVersion("1.0")
+        doc = SimpleDocument(id=doc_id, version=version, name=f"User{i}", value=i)
+        docs.append(doc)
+        await collection.insert_one(doc)
+
+    # Verify full retrieval (sanity check)
+    found_all = await collection.find(filters=None)
+    assert len(found_all) == 5  # Ensure all documents are present
+    assert found_all == docs  # Ensure the documents are in the correct order
+
+    # Test with offset = 1, limit = 3
+    found = await collection.find(filters=None, limit=3, offset=1)
+    assert len(found) == 3  # Should return 3 documents
+    assert found == docs[1:4]  # Expecting docs[1], docs[2], docs[3]
+
+    # Test with offset = 4, limit = 10 (limit greater than remaining docs)
+    found = await collection.find(filters=None, limit=10, offset=4)
+    assert len(found) == 1  # Only one document remains
+    assert found == [docs[4]]  # Expecting the last document only
+
+    # Test with offset = 5 (beyond range)
+    found = await collection.find(filters=None, limit=3, offset=5)
+    assert len(found) == 0  # Should return no documents
