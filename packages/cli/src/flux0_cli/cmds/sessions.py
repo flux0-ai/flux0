@@ -77,6 +77,19 @@ def create_event(ctx: click.Context, session_id: str, content: str) -> None:
             print(f"chunk event: {event.data.patches}")
 
 
+@list_options(sessions, "list")
+@validate_jsonpath
+def list_sessions(ctx: click.Context, output: str, jsonpath: Optional[str]) -> None:
+    """List all sessions"""
+    cli_ctx: Flux0CLIContext = ctx.obj
+    client: Flux0Client = cli_ctx.client
+    response = client.sessions.list()
+
+    result = OutputFormatter.format(response.data, output_format=output, jsonpath_expr=jsonpath)
+    if result:
+        click.echo(result)
+
+
 @list_options(sessions, "list-events")
 @click.option("--session-id", required=True, help="ID of the session to interact with")
 @validate_jsonpath

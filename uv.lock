@@ -247,8 +247,8 @@ requires-dist = [
 
 [[package]]
 name = "flux0-client"
-version = "0.0.1"
-source = { git = "https://github.com/flux0-ai/flux0-client-python#50c4feee5366851810af871f7ca1310e3b791d0b" }
+version = "0.0.2"
+source = { git = "https://github.com/flux0-ai/flux0-client-python#91f0815936daf79716128b93b009f3fd5b49f4f7" }
 dependencies = [
     { name = "eval-type-backport" },
     { name = "httpx" },
