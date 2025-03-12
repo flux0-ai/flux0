@@ -3,7 +3,7 @@ from typing import Annotated, Optional, Sequence, TypeAlias
 
 import dateutil
 import dateutil.parser
-from fastapi import Path
+from fastapi import Path, Query
 from flux0_core.agents import AgentId, AgentType
 from pydantic import Field
 
@@ -131,3 +131,16 @@ class AgentsDTO(DefaultBaseModel):
     List of agents in the system.
     """
     data: Sequence[AgentDTO]
+
+
+# ===========================
+# Misc
+# ===========================
+
+AgentIdQuery: TypeAlias = Annotated[
+    AgentId,
+    Query(
+        description="Unique identifier of the agent",
+        examples=["t5ul4jGZjb"],
+    ),
+]

@@ -29,6 +29,7 @@ from flux0_api.dependency_injection import (
     get_user_store,
 )
 from flux0_api.session_service import SessionService
+from flux0_api.types_agents import AgentIdQuery
 from flux0_api.types_events import (
     CorrelationIdQuery,
     EventCreationParamsDTO,
@@ -49,6 +50,7 @@ from flux0_api.types_session import (
     SessionCreationParamsDTO,
     SessionDTO,
     SessionIdPath,
+    SessionsDTO,
     session_example,
 )
 
@@ -164,6 +166,56 @@ def mount_retrieve_session_route(
         )
 
     return retrieve_session
+
+
+def mount_list_sessions_route(
+    router: APIRouter,
+) -> Callable[[AuthedUser, Optional[AgentIdQuery], SessionStore], Coroutine[Any, Any, SessionsDTO]]:
+    @router.get(
+        "",
+        tags=[API_GROUP],
+        operation_id="list_sessions",
+        response_model=SessionsDTO,
+        responses={
+            status.HTTP_200_OK: {
+                "description": "List of all matching sessions",
+                "content": {"application/json": {"example": {"data": [session_example]}}},
+            }
+        },
+        **apigen_config(group_name=API_GROUP, method_name="list"),
+    )
+    async def list_sessions(
+        authedUser: AuthedUser,
+        agent_id: Optional[AgentIdQuery] = None,
+        session_store: SessionStore = Depends(get_session_store),
+    ) -> SessionsDTO:
+        """
+        Retrieve all sessions that match the given filters.
+
+        Filters can be applied using agent_id. If no filters are specified, all sessions will be returned.
+        """
+
+        sessions = await session_store.list_sessions(
+            user_id=authedUser.id,
+            agent_id=agent_id,
+        )
+        return SessionsDTO(
+            data=[
+                SessionDTO(
+                    id=s.id,
+                    agent_id=s.agent_id,
+                    title=s.title,
+                    user_id=s.user_id,
+                    consumption_offsets=ConsumptionOffsetsDTO(
+                        client=s.consumption_offsets["client"],
+                    ),
+                    created_at=s.created_at,
+                )
+                for s in sessions
+            ]
+        )
+
+    return list_sessions
 
 
 # SSE Generator function
