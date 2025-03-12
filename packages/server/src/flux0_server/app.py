@@ -14,6 +14,7 @@ from flux0_api.sessions import (
     mount_create_event_and_stream_route,
     mount_create_session_route,
     mount_list_session_events_route,
+    mount_list_sessions_route,
     mount_retrieve_session_route,
 )
 from flux0_core.contextual_correlator import ContextualCorrelator
@@ -90,6 +91,7 @@ async def create_api_app(c: Container) -> ASGIApp:
     api_sessions_router = APIRouter(prefix="/sessions")
     mount_create_session_route(api_sessions_router)
     mount_retrieve_session_route(api_sessions_router)
+    mount_list_sessions_route(api_sessions_router)
     mount_create_event_and_stream_route(api_sessions_router)
     mount_list_session_events_route(api_sessions_router)
     api_router.include_router(api_sessions_router)
