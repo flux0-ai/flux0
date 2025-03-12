@@ -1,7 +1,7 @@
 import asyncio
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Mapping, Optional, Self, Sequence, Union, override
+from typing import List, Mapping, Optional, Self, Sequence, TypedDict, Union, override
 
 from flux0_core.agents import Agent, AgentId, AgentStore, AgentType, AgentUpdateParams
 from flux0_core.async_utils import RWLock
@@ -25,15 +25,19 @@ from flux0_core.types import JSONSerializable
 from flux0_core.users import User, UserId, UserStore, UserUpdateParams
 from flux0_nanodb.api import DocumentCollection, DocumentDatabase
 from flux0_nanodb.query import And, Comparison, QueryFilter
-from flux0_nanodb.types import Document, DocumentID, DocumentVersion
+from flux0_nanodb.types import DocumentID, DocumentVersion
 
 
 #############
 # User
 #############
-@dataclass(frozen=True)
-class _UserDocument(User, Document):
+class _UserDocument(TypedDict, total=False):
+    id: DocumentID
     version: DocumentVersion
+    sub: str
+    name: str
+    email: Optional[str]
+    created_at: datetime
 
 
 class UserDocumentStore(UserStore):
@@ -60,19 +64,26 @@ class UserDocumentStore(UserStore):
         self,
         user: User,
     ) -> _UserDocument:
-        data = asdict(user)
-        data["id"] = DocumentID(user.id)
-        data["version"] = self.VERSION
-        return _UserDocument(**data)
+        return _UserDocument(
+            id=DocumentID(user.id),
+            version=self.VERSION,
+            sub=user.sub,
+            name=user.name,
+            email=user.email,
+            created_at=user.created_at,
+        )
 
     def _deserialize_user(
         self,
         doc: _UserDocument,
     ) -> User:
-        data = asdict(doc)
-        data.pop("version")
-        data["id"] = UserId(doc.id)
-        return User(**data)
+        return User(
+            id=UserId(doc["id"]),
+            sub=doc["sub"],
+            name=doc["name"],
+            email=doc.get("email"),
+            created_at=doc["created_at"],
+        )
 
     @override
     async def create_user(
@@ -124,9 +135,13 @@ class UserDocumentStore(UserStore):
 #############
 # Agent
 #############
-@dataclass(frozen=True)
-class _AgentDocument(Agent, Document):
+class _AgentDocument(TypedDict, total=False):
+    id: DocumentID
     version: DocumentVersion
+    type: AgentType
+    name: str
+    description: Optional[str]
+    created_at: datetime
 
 
 class AgentDocumentStore(AgentStore):
@@ -153,19 +168,26 @@ class AgentDocumentStore(AgentStore):
         self,
         agent: Agent,
     ) -> _AgentDocument:
-        data = asdict(agent)
-        data["id"] = DocumentID(agent.id)
-        data["version"] = self.VERSION
-        return _AgentDocument(**data)
+        return _AgentDocument(
+            id=DocumentID(agent.id),
+            version=self.VERSION,
+            type=agent.type,
+            name=agent.name,
+            description=agent.description,
+            created_at=agent.created_at,
+        )
 
     def _deserialize_agent(
         self,
         doc: _AgentDocument,
     ) -> Agent:
-        data = asdict(doc)
-        data.pop("version")
-        data["id"] = AgentId(doc.id)
-        return Agent(**data)
+        return Agent(
+            id=AgentId(doc["id"]),
+            type=doc["type"],
+            name=doc["name"],
+            description=doc["description"],
+            created_at=doc["created_at"],
+        )
 
     @override
     async def create_agent(
@@ -235,15 +257,30 @@ class AgentDocumentStore(AgentStore):
 #############
 
 
-@dataclass(frozen=True)
-class _SessionDocument(Session, Document):
+class _SessionDocument(TypedDict, total=False):
+    id: DocumentID
     version: DocumentVersion
+    agent_id: AgentId
+    user_id: UserId
+    mode: SessionMode
+    title: Optional[str]
+    consumption_offsets: Mapping[ConsumerId, int]
+    created_at: datetime
 
 
 @dataclass(frozen=True)
-class _EventDocument(Event, Document):
+class _EventDocument(TypedDict, total=False):
+    id: DocumentID
     version: DocumentVersion
     session_id: SessionId
+    source: EventSource
+    type: EventType
+    offset: int
+    correlation_id: str
+    data: Union[MessageEventData, StatusEventData, ToolEventData]
+    deleted: bool
+    created_at: datetime
+    metadata: Optional[Mapping[str, JSONSerializable]]
 
 
 class SessionDocumentStore(SessionStore):
@@ -272,40 +309,65 @@ class SessionDocumentStore(SessionStore):
         self,
         session: Session,
     ) -> _SessionDocument:
-        data = asdict(session)
-        data["id"] = DocumentID(session.id)
-        data["version"] = self.VERSION
-        return _SessionDocument(**data)
+        return _SessionDocument(
+            id=DocumentID(session.id),
+            version=self.VERSION,
+            agent_id=session.agent_id,
+            user_id=session.user_id,
+            mode=session.mode,
+            title=session.title,
+            consumption_offsets=session.consumption_offsets,
+            created_at=session.created_at,
+        )
 
     def _deserialize_session(
         self,
         doc: _SessionDocument,
     ) -> Session:
-        data = asdict(doc)
-        data.pop("version")
-        data["id"] = SessionId(doc.id)
-        return Session(**data)
+        return Session(
+            id=SessionId(doc["id"]),
+            agent_id=doc["agent_id"],
+            user_id=doc["user_id"],
+            mode=doc["mode"],
+            title=doc.get("title"),
+            consumption_offsets=doc["consumption_offsets"],
+            created_at=doc["created_at"],
+        )
 
     def _serialize_event(
         self,
         session_id: SessionId,
         event: Event,
     ) -> _EventDocument:
-        data = asdict(event)
-        data["id"] = DocumentID(event.id)
-        data["session_id"] = DocumentID(session_id)
-        data["version"] = self.VERSION
-        return _EventDocument(**data)
+        return _EventDocument(
+            id=DocumentID(event.id),
+            version=self.VERSION,
+            session_id=session_id,
+            source=event.source,
+            type=event.type,
+            offset=event.offset,
+            correlation_id=event.correlation_id,
+            data=event.data,
+            deleted=event.deleted,
+            created_at=event.created_at,
+            metadata=event.metadata,
+        )
 
     def _deserialize_event(
         self,
         doc: _EventDocument,
     ) -> Event:
-        data = asdict(doc)
-        data.pop("version")
-        data.pop("session_id")
-        data["id"] = EventId(doc.id)
-        return Event(**data)
+        return Event(
+            id=EventId(doc["id"]),
+            source=doc["source"],
+            type=doc["type"],
+            offset=doc["offset"],
+            correlation_id=doc["correlation_id"],
+            data=doc["data"],
+            deleted=doc["deleted"],
+            created_at=doc["created_at"],
+            metadata=doc.get("metadata"),
+        )
 
     @override
     async def create_session(

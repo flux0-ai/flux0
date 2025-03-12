@@ -1,17 +1,16 @@
 from dataclasses import dataclass
-from typing import Generic, NewType, Optional, Protocol, TypeVar
+from typing import Generic, NewType, Optional, TypedDict, TypeVar
 
 DocumentID = NewType("DocumentID", str)
 DocumentVersion = NewType("DocumentVersion", str)
 
 
-class Document(Protocol):
+class BaseDocument(TypedDict, total=False):
     id: DocumentID
     version: DocumentVersion
 
 
-# Type variable bound to Document to ensure type safety.
-TDocument = TypeVar("TDocument", bound=Document)
+TDocument = TypeVar("TDocument", bound=BaseDocument)
 
 
 # MongoDB-like result structure for insert operations.
