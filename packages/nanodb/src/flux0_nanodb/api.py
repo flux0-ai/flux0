@@ -41,10 +41,13 @@ class DocumentCollection(ABC, Generic[TDocument]):
         self,
         filters: Optional[QueryFilter],
         projection: Optional[Mapping[str, Projection]] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ) -> Sequence[TDocument]:
         """
         Find all documents that match the optional filters.
-        Optionally apply a projection to return only specified fields
+        Optionally apply a projection to return only specified fields.
+        Supports pagination via limit and offset.
         """
         pass
 

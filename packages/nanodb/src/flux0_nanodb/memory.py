@@ -22,16 +22,31 @@ class MemoryDocumentCollection(DocumentCollection[TDocument]):
         self,
         filters: Optional[QueryFilter] = None,
         projection: Optional[Mapping[str, Projection]] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ) -> Sequence[TDocument]:
         docs: Sequence[TDocument] = []
+        # Apply filters
         if filters is None:
             docs = self._documents
         else:
-            # Convert each document to a dict and evaluate the filter.
             docs = [doc for doc in self._documents if matches_query(filters, doc)]
 
+        # Apply projection if given
         if projection:
             docs = [cast(TDocument, apply_projection(doc, projection)) for doc in docs]
+
+        # Validate and apply offset
+        if offset is not None:
+            if offset < 0:
+                raise ValueError("Offset must be non-negative")
+            docs = docs[offset:]
+
+        # Validate and apply limit
+        if limit is not None:
+            if limit < 0:
+                raise ValueError("Limit must be non-negative")
+            docs = docs[:limit]
 
         return docs
 
