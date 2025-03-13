@@ -43,6 +43,15 @@ async def create_api_app(c: Container) -> ASGIApp:
     correlator = c[ContextualCorrelator]
 
     api_app = FastAPI(
+        title="Flux0 AI Agent API",
+        summary="A flexible API for managing AI-driven agents, sessions, and event streaming in real time.",
+        description=(
+            "The Flux0 API enables developers to create and manage AI agents, interact with them via sessions, "
+            "and handle event streaming using JSONPatch (RFC 6902). It is designed to support multi-agent workflows, "
+            "facilitate LLM-agnostic integrations, and provide structured interactions with AI-powered assistants. "
+            "The API is ideal for orchestrating intelligent assistants, tracking interactions, and ensuring dynamic "
+            "and responsive AI applications."
+        ),
         servers=[
             {"url": "http://127.0.0.1:8080", "description": "Local server"},
         ],
