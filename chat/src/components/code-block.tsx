@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 
-interface CodeBlockProps {
-  inline: boolean;
-  className: string;
-  children: React.ReactNode;
+// Use the intrinsic props for a `code` element, which already have optional children.
+interface CodeBlockProps extends React.ComponentPropsWithoutRef<"code"> {
+  inline?: boolean;
 }
 
 export function CodeBlock({
-  inline,
-  className,
+  inline = false,
+  className = "",
   children,
   ...props
 }: CodeBlockProps) {
