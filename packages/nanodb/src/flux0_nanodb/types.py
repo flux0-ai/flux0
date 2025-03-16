@@ -1,8 +1,14 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Generic, NewType, Optional, TypedDict, TypeVar
 
 DocumentID = NewType("DocumentID", str)
 DocumentVersion = NewType("DocumentVersion", str)
+
+
+class SortingOrder(Enum):
+    ASC = True
+    DESC = False
 
 
 class BaseDocument(TypedDict, total=False):

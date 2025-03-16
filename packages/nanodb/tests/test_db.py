@@ -11,7 +11,13 @@ from flux0_nanodb.api import (
 from flux0_nanodb.memory import MemoryDocumentDatabase
 from flux0_nanodb.projection import Projection
 from flux0_nanodb.query import Comparison, QueryFilter
-from flux0_nanodb.types import DeleteResult, DocumentID, DocumentVersion, InsertOneResult
+from flux0_nanodb.types import (
+    DeleteResult,
+    DocumentID,
+    DocumentVersion,
+    InsertOneResult,
+    SortingOrder,
+)
 
 
 # A test document that extends our base Document.
@@ -133,3 +139,74 @@ async def test_find_with_pagination(collection: DocumentCollection[SimpleDocumen
     # Test with offset = 5 (beyond range)
     found = await collection.find(filters=None, limit=3, offset=5)
     assert len(found) == 0  # Should return no documents
+
+
+@pytest.mark.asyncio
+async def test_find_with_sorting(collection: DocumentCollection[SimpleDocument]) -> None:
+    # Insert documents in an unsorted order.
+    docs = []
+    # Document 1: value=30, name="Bob"
+    doc1 = SimpleDocument(
+        id=DocumentID(str(uuid.uuid4())),
+        version=DocumentVersion("1.0"),
+        name="Bob",
+        value=30,
+    )
+    docs.append(doc1)
+    # Document 2: value=20, name="Alice"
+    doc2 = SimpleDocument(
+        id=DocumentID(str(uuid.uuid4())),
+        version=DocumentVersion("1.0"),
+        name="Alice",
+        value=20,
+    )
+    docs.append(doc2)
+    # Document 3: value=40, name="Carol"
+    doc3 = SimpleDocument(
+        id=DocumentID(str(uuid.uuid4())),
+        version=DocumentVersion("1.0"),
+        name="Carol",
+        value=40,
+    )
+    docs.append(doc3)
+
+    for doc in docs:
+        await collection.insert_one(doc)
+
+    # Sort by "value" in ascending order.
+    sorted_by_value = await collection.find(filters=None, sort=[("value", SortingOrder.ASC)])
+    assert sorted_by_value == [doc2, doc1, doc3]
+
+    # Sort by "name" in descending order.
+    sorted_by_name = await collection.find(filters=None, sort=[("name", SortingOrder.DESC)])
+    # Expected order: "Carol" > "Bob" > "Alice"
+    assert sorted_by_name == [doc3, doc1, doc2]
+
+    # Sort by "value" ascending then by "name" descending (if needed for tie-breakers)
+    # For demonstration, create two documents with the same value.
+    doc4 = SimpleDocument(
+        id=DocumentID(str(uuid.uuid4())),
+        version=DocumentVersion("1.0"),
+        name="Zoe",
+        value=25,
+    )
+    doc5 = SimpleDocument(
+        id=DocumentID(str(uuid.uuid4())),
+        version=DocumentVersion("1.0"),
+        name="Anna",
+        value=25,
+    )
+    await collection.insert_one(doc4)
+    await collection.insert_one(doc5)
+
+    # Now sort by "value" ascending then by "name" descending.
+    sorted_multi = await collection.find(
+        filters=None, sort=[("value", SortingOrder.ASC), ("name", SortingOrder.DESC)]
+    )
+    # Expected order:
+    # - First: document with value=20 (doc2),
+    # - Then the two with value=25 sorted by name descending: "Zoe" (doc4) comes before "Anna" (doc5),
+    # - Followed by: document with value=30 (doc1),
+    # - And lastly: document with value=40 (doc3).
+    expected = [doc2, doc4, doc5, doc1, doc3]
+    assert sorted_multi == expected

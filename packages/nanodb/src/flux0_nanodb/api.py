@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, Mapping, Optional, Sequence, Type
+from typing import Generic, Mapping, Optional, Sequence, Tuple, Type
 
 from flux0_nanodb.projection import Projection
 from flux0_nanodb.query import QueryFilter
-from flux0_nanodb.types import DeleteResult, InsertOneResult, TDocument
+from flux0_nanodb.types import DeleteResult, InsertOneResult, SortingOrder, TDocument
 
 
 class DocumentDatabase(ABC):
@@ -43,11 +43,17 @@ class DocumentCollection(ABC, Generic[TDocument]):
         projection: Optional[Mapping[str, Projection]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        sort: Optional[Sequence[Tuple[str, SortingOrder]]] = None,
     ) -> Sequence[TDocument]:
         """
         Find all documents that match the optional filters.
-        Optionally apply a projection to return only specified fields.
-        Supports pagination via limit and offset.
+        Optionally apply a projection, pagination, and sorting.
+
+        - `sort` is a list of tuples where:
+          - The first element is the field name.
+          - The second element is the sorting order (`SortOrder.ASC` for ascending or `SortOrder.DESC` for descending).
+
+        Sorting is applied after filtering but before pagination.
         """
         pass
 

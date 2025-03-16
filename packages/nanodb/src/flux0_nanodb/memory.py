@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Optional, Sequence, Type, cast
+from typing import Any, Mapping, Optional, Protocol, Sequence, Tuple, Type, cast
 
 from flux0_nanodb.api import DocumentCollection, DocumentDatabase
 from flux0_nanodb.common import validate_is_total
@@ -8,8 +8,13 @@ from flux0_nanodb.types import (
     DeleteResult,
     DocumentID,
     InsertOneResult,
+    SortingOrder,
     TDocument,
 )
+
+
+class Comparable(Protocol):
+    def __lt__(self, other: Any) -> bool: ...
 
 
 class MemoryDocumentCollection(DocumentCollection[TDocument]):
@@ -24,6 +29,7 @@ class MemoryDocumentCollection(DocumentCollection[TDocument]):
         projection: Optional[Mapping[str, Projection]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        sort: Optional[Sequence[Tuple[str, SortingOrder]]] = None,
     ) -> Sequence[TDocument]:
         docs: Sequence[TDocument] = []
         # Apply filters
@@ -31,6 +37,15 @@ class MemoryDocumentCollection(DocumentCollection[TDocument]):
             docs = self._documents
         else:
             docs = [doc for doc in self._documents if matches_query(filters, doc)]
+
+        # Sorting step: if sort is provided, sort docs on the specified fields.
+        if sort is not None:
+            # Process sort keys in reverse order (stable sort ensures correct overall order)
+            for field, order in reversed(sort):
+                docs.sort(
+                    key=lambda doc: cast(Comparable, doc.get(field, None)),
+                    reverse=(order == SortingOrder.DESC),
+                )
 
         # Apply projection if given
         if projection:
