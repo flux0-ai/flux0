@@ -1,5 +1,5 @@
 import uuid
-from typing import TypedDict
+from typing import Any, List, NotRequired, TypedDict
 
 import pytest
 
@@ -16,6 +16,7 @@ from flux0_nanodb.types import (
     DocumentID,
     DocumentVersion,
     InsertOneResult,
+    JSONPatchOperation,
     SortingOrder,
 )
 
@@ -24,6 +25,8 @@ from flux0_nanodb.types import (
 class SimpleDocument(TypedDict, total=False):
     name: str
     value: int
+    profile: NotRequired[dict[str, Any]]
+    settings: NotRequired[dict[str, Any]]
     id: DocumentID
     version: DocumentVersion
 
@@ -66,7 +69,7 @@ async def test_delete_document(collection: DocumentCollection[SimpleDocument]) -
     # Insert a document and then delete it.
     doc_id = DocumentID(str(uuid.uuid4()))
     version = DocumentVersion("1.0")
-    doc = SimpleDocument(id=doc_id, version=version, name="Bob", value=100)
+    doc = SimpleDocument(id=doc_id, version=version, name="Bob", value=100, profile={}, settings={})
     await collection.insert_one(doc)
 
     query: QueryFilter = Comparison(path="name", op="$eq", value="Bob")
@@ -85,7 +88,9 @@ async def test_find_no_results(collection: DocumentCollection[SimpleDocument]) -
     # Insert a document.
     doc_id = DocumentID(str(uuid.uuid4()))
     version = DocumentVersion("1.0")
-    doc = SimpleDocument(id=doc_id, version=version, name="Carol", value=10)
+    doc = SimpleDocument(
+        id=doc_id, version=version, name="Carol", value=10, profile={}, settings={}
+    )
     await collection.insert_one(doc)
 
     # Query with a filter that should not match.
@@ -117,7 +122,9 @@ async def test_find_with_pagination(collection: DocumentCollection[SimpleDocumen
     for i in range(5):
         doc_id = DocumentID(str(uuid.uuid4()))
         version = DocumentVersion("1.0")
-        doc = SimpleDocument(id=doc_id, version=version, name=f"User{i}", value=i)
+        doc = SimpleDocument(
+            id=doc_id, version=version, name=f"User{i}", value=i, profile={}, settings={}
+        )
         docs.append(doc)
         await collection.insert_one(doc)
 
@@ -151,6 +158,8 @@ async def test_find_with_sorting(collection: DocumentCollection[SimpleDocument])
         version=DocumentVersion("1.0"),
         name="Bob",
         value=30,
+        profile={},
+        settings={},
     )
     docs.append(doc1)
     # Document 2: value=20, name="Alice"
@@ -159,6 +168,8 @@ async def test_find_with_sorting(collection: DocumentCollection[SimpleDocument])
         version=DocumentVersion("1.0"),
         name="Alice",
         value=20,
+        profile={},
+        settings={},
     )
     docs.append(doc2)
     # Document 3: value=40, name="Carol"
@@ -167,6 +178,8 @@ async def test_find_with_sorting(collection: DocumentCollection[SimpleDocument])
         version=DocumentVersion("1.0"),
         name="Carol",
         value=40,
+        profile={},
+        settings={},
     )
     docs.append(doc3)
 
@@ -189,12 +202,16 @@ async def test_find_with_sorting(collection: DocumentCollection[SimpleDocument])
         version=DocumentVersion("1.0"),
         name="Zoe",
         value=25,
+        profile={},
+        settings={},
     )
     doc5 = SimpleDocument(
         id=DocumentID(str(uuid.uuid4())),
         version=DocumentVersion("1.0"),
         name="Anna",
         value=25,
+        profile={},
+        settings={},
     )
     await collection.insert_one(doc4)
     await collection.insert_one(doc5)
@@ -210,3 +227,129 @@ async def test_find_with_sorting(collection: DocumentCollection[SimpleDocument])
     # - And lastly: document with value=40 (doc3).
     expected = [doc2, doc4, doc5, doc1, doc3]
     assert sorted_multi == expected
+
+
+@pytest.mark.asyncio
+async def test_update_replace_field(collection: DocumentCollection[SimpleDocument]) -> None:
+    # Insert a document.
+    doc_id = DocumentID(str(uuid.uuid4()))
+    version = DocumentVersion("1.0")
+    doc = SimpleDocument(
+        id=doc_id, version=version, name="Alice", value=10, profile={}, settings={}
+    )
+    await collection.insert_one(doc)
+
+    # Use update_one to replace the "value" field.
+    patch: List[JSONPatchOperation] = [{"op": "replace", "path": "/value", "value": 20}]
+    result = await collection.update_one(
+        filters=Comparison(path="id", op="$eq", value=doc_id), patch=patch
+    )
+    assert result.matched_count == 1
+    found = await collection.find(Comparison(path="id", op="$eq", value=doc_id))
+    assert found[0].get("value") == 20
+
+
+@pytest.mark.asyncio
+async def test_update_add_nested_field(collection: DocumentCollection[SimpleDocument]) -> None:
+    # Insert a document with no settings.
+    doc_id = DocumentID(str(uuid.uuid4()))
+    version = DocumentVersion("1.0")
+    doc = SimpleDocument(id=doc_id, version=version, name="Bob", value=50, profile={}, settings={})
+    await collection.insert_one(doc)
+
+    # Use update_one to add a nested field in settings.
+    patch: List[JSONPatchOperation] = [{"op": "add", "path": "/settings/theme", "value": "dark"}]
+    result = await collection.update_one(
+        filters=Comparison(path="id", op="$eq", value=doc_id), patch=patch
+    )
+    assert result.matched_count == 1
+    found = await collection.find(Comparison(path="id", op="$eq", value=doc_id))
+    assert "settings" in found[0] and found[0]["settings"].get("theme") == "dark"
+
+
+@pytest.mark.asyncio
+async def test_update_remove_field(collection: DocumentCollection[SimpleDocument]) -> None:
+    # Insert a document with a 'name' field.
+    doc_id = DocumentID(str(uuid.uuid4()))
+    version = DocumentVersion("1.0")
+    doc = SimpleDocument(
+        id=doc_id, version=version, name="Carol", value=75, profile={}, settings={}
+    )
+    await collection.insert_one(doc)
+
+    # Use update_one to remove the 'name' field.
+    patch: List[JSONPatchOperation] = [{"op": "remove", "path": "/name"}]
+    result = await collection.update_one(
+        filters=Comparison(path="id", op="$eq", value=doc_id), patch=patch
+    )
+    assert result.matched_count == 1
+    found = await collection.find(Comparison(path="id", op="$eq", value=doc_id))
+    assert "name" not in found[0]
+
+
+@pytest.mark.asyncio
+async def test_update_replace_nested_value(collection: DocumentCollection[SimpleDocument]) -> None:
+    # Insert a document with nested profile information.
+    doc_id = DocumentID(str(uuid.uuid4()))
+    version = DocumentVersion("1.0")
+    doc = SimpleDocument(
+        id=doc_id,
+        version=version,
+        name="Dave",
+        value=100,
+        profile={"address": {"city": "Old Town"}},
+    )
+    await collection.insert_one(doc)
+
+    # Use update_one to replace the nested city value.
+    patch: List[JSONPatchOperation] = [
+        {"op": "replace", "path": "/profile/address/city", "value": "New York"}
+    ]
+    result = await collection.update_one(
+        filters=Comparison(path="id", op="$eq", value=doc_id), patch=patch
+    )
+    assert result.matched_count == 1
+    found = await collection.find(Comparison(path="id", op="$eq", value=doc_id))
+    assert (
+        "profile" in found[0]
+        and "address" in found[0]["profile"]
+        and found[0]["profile"]["address"]["city"] == "New York"
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_upsert_document(collection: DocumentCollection[SimpleDocument]) -> None:
+    # Attempt to update a non-existent document; upsert should create a new one.
+    new_doc_id = DocumentID(str(uuid.uuid4()))
+    patch: List[JSONPatchOperation] = [
+        {"op": "add", "path": "/id", "value": new_doc_id},
+        {"op": "add", "path": "/name", "value": "Eve"},
+        {"op": "add", "path": "/value", "value": 200},
+    ]
+    result = await collection.update_one(
+        filters=Comparison(path="id", op="$eq", value=new_doc_id), patch=patch, upsert=True
+    )
+    assert result.matched_count == 0
+    assert result.upserted_id == new_doc_id
+    found = await collection.find(Comparison(path="id", op="$eq", value=new_doc_id))
+    assert len(found) == 1
+    assert found[0].get("name") == "Eve"
+    assert found[0].get("value") == 200
+
+
+@pytest.mark.asyncio
+async def test_update_invalid_patch(collection: DocumentCollection[SimpleDocument]) -> None:
+    # Insert a document.
+    doc_id = DocumentID(str(uuid.uuid4()))
+    version = DocumentVersion("1.0")
+    doc = SimpleDocument(id=doc_id, version=version, name="Frank", value=300)
+    await collection.insert_one(doc)
+
+    # Use an invalid patch (e.g., trying to replace a non-existent path without add).
+    patch: List[JSONPatchOperation] = [{"op": "replace", "path": "/nonexistent", "value": "oops"}]
+    with pytest.raises(ValueError):
+        await collection.update_one(
+            filters=Comparison(path="id", op="$eq", value=doc_id), patch=patch
+        )
+    docs = await collection.find(Comparison(path="id", op="$eq", value=doc_id))
+    assert doc == docs[0]

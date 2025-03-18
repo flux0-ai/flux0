@@ -1,15 +1,19 @@
-from typing import Any, Mapping, Optional, Protocol, Sequence, Tuple, Type, cast
+from typing import Any, List, Mapping, Optional, Protocol, Sequence, Tuple, Type, cast
+
+import jsonpatch
 
 from flux0_nanodb.api import DocumentCollection, DocumentDatabase
-from flux0_nanodb.common import validate_is_total
+from flux0_nanodb.common import convert_patch, validate_is_total
 from flux0_nanodb.projection import Projection, apply_projection
 from flux0_nanodb.query import QueryFilter, matches_query
 from flux0_nanodb.types import (
     DeleteResult,
     DocumentID,
     InsertOneResult,
+    JSONPatchOperation,
     SortingOrder,
     TDocument,
+    UpdateOneResult,
 )
 
 
@@ -72,6 +76,39 @@ class MemoryDocumentCollection(DocumentCollection[TDocument]):
         if inserted_id is None:
             raise ValueError("Document is missing an 'id' field")
         return InsertOneResult(acknowledged=True, inserted_id=inserted_id)
+
+    async def update_one(
+        self, filters: QueryFilter, patch: List[JSONPatchOperation], upsert: bool = False
+    ) -> UpdateOneResult:
+        standard_patch = convert_patch(patch)
+        # Look for an existing document matching the filters.
+        for i, doc in enumerate(self._documents):
+            if matches_query(filters, doc):
+                try:
+                    updated_doc = jsonpatch.apply_patch(doc, standard_patch, in_place=False)
+                except jsonpatch.JsonPatchException as e:
+                    raise ValueError("Invalid JSON patch") from e
+                # validate_is_total(updated_doc, self._schema)
+                self._documents[i] = cast(TDocument, updated_doc)
+                return UpdateOneResult(
+                    acknowledged=True, matched_count=1, modified_count=1, upserted_id=None
+                )
+        # No matching document found.
+        if upsert:
+            try:
+                new_doc = jsonpatch.apply_patch({}, standard_patch, in_place=False)
+            except jsonpatch.JsonPatchException as e:
+                raise ValueError("Invalid JSON patch for upsert") from e
+            if "id" not in new_doc:
+                raise ValueError("Upserted document is missing an 'id' field")
+            validate_is_total(new_doc, self._schema)
+            self._documents.append(cast(TDocument, new_doc))
+            return UpdateOneResult(
+                acknowledged=True, matched_count=0, modified_count=0, upserted_id=new_doc["id"]
+            )
+        return UpdateOneResult(
+            acknowledged=True, matched_count=0, modified_count=0, upserted_id=None
+        )
 
     async def delete_one(self, filters: QueryFilter) -> DeleteResult[TDocument]:
         for i, doc in enumerate(self._documents):
