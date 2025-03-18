@@ -14,24 +14,32 @@ jobs:
     uses: ./.github/workflows/release-package.yml
     with:
       package: nanodb
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
   release-core:
     uses: ./.github/workflows/release-package.yml
     needs: release-nanodb
     with:
       package: core
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
   release-stream:
     uses: ./.github/workflows/release-package.yml
     needs: [release-nanodb, release-core]
     with:
       package: stream
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
   release-api:
     uses: ./.github/workflows/release-package.yml
     needs: [release-nanodb, release-core, release-stream]
     with:
       package: api
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
   build-chat:
     runs-on: ubuntu-latest
@@ -74,12 +82,16 @@ jobs:
       artifact_name: chat-dist-${{ github.run_id }}
       artifact_target_path: packages/server/static/
       package: server
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
   release-cli:
     uses: ./.github/workflows/release-package.yml
     needs: [release-nanodb, release-core, release-stream, release-api, release-server]
     with:
       package: cli
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
   release-root:
     runs-on: ubuntu-latest
