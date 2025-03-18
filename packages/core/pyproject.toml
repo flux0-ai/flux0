@@ -4,7 +4,7 @@ version = "0.0.0"
 requires-python = ">=3.13"
 dependencies = [
     "aiorwlock>=1.5.0",
-    "flux0-nanodb==0.0.0",
+    "flux0-nanodb==0.1.0-beta.1",
     "nanoid>=2.0.0",
     "structlog>=25.1.0"
 ]
