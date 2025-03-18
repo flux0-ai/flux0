@@ -14,6 +14,11 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "tests",
+]
+
 [tool.uv.sources]
 flux0-client = { git = "https://github.com/flux0-ai/flux0-client-python" }
 

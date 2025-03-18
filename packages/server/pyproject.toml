@@ -16,8 +16,18 @@ flux0-api = { workspace = true }
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "tests",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/flux0_server",
+]
+
 [tool.hatch.build.targets.wheel.shared-data]
-static = "flux0-chat/dist"
+static = "flux0-chat/static"
 
 [dependency-groups]
 dev = [

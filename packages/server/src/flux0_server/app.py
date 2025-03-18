@@ -44,7 +44,7 @@ def static_path() -> str:
         return os.environ["FLUX0_STATIC_DIR"]
 
     shared_data_dir = sysconfig.get_path("data")
-    static_dir = os.path.join(shared_data_dir, "flux0-chat", "dist")
+    static_dir = os.path.join(shared_data_dir, "flux0-chat", "static")
     return static_dir
 
 
