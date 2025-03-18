@@ -1,0 +1,75 @@
+name: Release Package
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        required: true
+        type: string
+      artifact_name:
+        required: false
+        type: string
+      artifact_target_path:
+        required: false
+        type: string
+
+
+jobs:
+  release-package:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-release-${{ inputs.package }}-${{ github.ref_name }}
+      cancel-in-progress: false
+
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Setup | Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Setup | Sync with upstream branch
+        run: |
+          git fetch origin ${{ github.ref_name }}
+          git reset --hard origin/${{ github.ref_name }}
+
+      - name: Sync Dependencies | Update ${{ inputs.package }}'s workspace dependencies
+        run: python scripts/update_package_deps.py ${{ inputs.package }}
+
+      - name: Download Artifacts
+        if: inputs.artifact_name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifact_target_path}}
+
+      - name: Action | Semantic Version Release (${{ inputs.package }} package)
+        id: release_package
+        uses: python-semantic-release/python-semantic-release@v9.21.0
+        with:
+          root_options: "-v --noop"
+          directory: ./packages/${{ inputs.package }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_committer_name: "github-actions"
+          git_committer_email: "actions@users.noreply.github.com"
+
+      - name: Publish | Upload package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: steps.release_package.outputs.released == 'true'
+        with:
+          packages-dir: ./dist
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Publish | Upload to GitHub Release Assets (${{ inputs.package }} package)
+        uses: python-semantic-release/publish-action@v9.21.0
+        if: steps.release_package.outputs.released == 'true'
+        with:
+          root_options: "-v --noop"
+          directory: ./packages/${{ inputs.package }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.release_package.outputs.tag }}

@@ -1,0 +1,134 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - beta
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release-nanodb:
+    uses: ./.github/workflows/release-package.yml
+    with:
+      package: nanodb
+
+  release-core:
+    uses: ./.github/workflows/release-package.yml
+    needs: release-nanodb
+    with:
+      package: core
+
+  release-stream:
+    uses: ./.github/workflows/release-package.yml
+    needs: [release-nanodb, release-core]
+    with:
+      package: stream
+
+  release-api:
+    uses: ./.github/workflows/release-package.yml
+    needs: [release-nanodb, release-core, release-stream]
+    with:
+      package: api
+
+  build-chat:
+    runs-on: ubuntu-latest
+    needs: release-nanodb
+    concurrency:
+      group: ${{ github.workflow }}-release-build-chat-${{ github.ref_name }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Setup | Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Force Install Corepack and Enable
+        run: npm install -g corepack && corepack enable
+
+      - name: Install | Install Dependencies for UI
+        run: |
+          cd chat
+          pnpm install --frozen-lockfile
+      
+      - name: Build | Build UI
+        run: |
+          cd chat
+          pnpm build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat-dist-${{ github.run_id }}
+          path: chat/dist
+          retention-days: 1
+
+  release-server:
+    uses: ./.github/workflows/release-package.yml
+    needs: [build-chat, release-nanodb, release-core, release-stream, release-api]
+    with:
+      artifact_name: chat-dist-${{ github.run_id }}
+      artifact_target_path: packages/server/static/
+      package: server
+
+  release-cli:
+    uses: ./.github/workflows/release-package.yml
+    needs: [release-nanodb, release-core, release-stream, release-api, release-server]
+    with:
+      package: cli
+
+  release-root:
+    runs-on: ubuntu-latest
+    needs: [release-nanodb, release-core, release-stream, release-api, release-server, release-cli]
+    concurrency:
+      group: ${{ github.workflow }}-release-root-${{ github.ref_name }}
+      cancel-in-progress: false
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Setup | Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Setup | Sync with upstream branch
+        run: |
+          git fetch origin ${{ github.ref_name }}
+          git reset --hard origin/${{ github.ref_name }}
+
+      - name: Sync Dependencies | Update root's workspace dependencies
+        run: python scripts/update_package_deps.py root
+
+      - name: Action | Semantic Version Release (Root package)
+        id: release_root
+        uses: python-semantic-release/python-semantic-release@v9.21.0
+        with:
+          directory: ./
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_committer_name: "github-actions"
+          git_committer_email: "actions@users.noreply.github.com"
+
+      - name: Publish | Upload package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: steps.release_root.outputs.released == 'true'
+        with:
+          packages-dir: ./dist
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Publish | Upload to GitHub Release Assets (Root) package
+        uses: python-semantic-release/publish-action@v9.21.0
+        if: steps.release_root.outputs.released == 'true'
+        with:
+          root_options: "-v --noop"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.release_root.outputs.tag }}

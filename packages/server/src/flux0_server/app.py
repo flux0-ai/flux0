@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sysconfig
 from typing import Any, Awaitable, Callable
 
 from fastapi import APIRouter, FastAPI, Request, Response, status
@@ -36,6 +37,15 @@ class SPAStaticFiles(StaticFiles):
 
         # If the file does NOT exist, serve `index.html`
         return await super().get_response("index.html", scope)
+
+
+def static_path() -> str:
+    if os.environ.get("FLUX0_STATIC_DIR"):
+        return os.environ["FLUX0_STATIC_DIR"]
+
+    shared_data_dir = sysconfig.get_path("data")
+    static_dir = os.path.join(shared_data_dir, "flux0-chat", "dist")
+    return static_dir
 
 
 async def create_api_app(c: Container) -> ASGIApp:
@@ -79,9 +89,7 @@ async def create_api_app(c: Container) -> ASGIApp:
             with logger.operation(f"HTTP Request: {request.method} {request.url.path}"):
                 return await call_next(request)
 
-    static_dir = os.path.join(
-        os.path.dirname(__file__), os.environ.get("FLUX0_STATIC_DIR", "/app/chat")
-    )
+    static_dir = static_path()
     if os.path.isdir(static_dir):
         api_app.mount("/chat", SPAStaticFiles(directory=static_dir), name="static")
 
