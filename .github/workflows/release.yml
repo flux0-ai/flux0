@@ -129,6 +129,5 @@ jobs:
         uses: python-semantic-release/publish-action@v9.21.0
         if: steps.release_root.outputs.released == 'true'
         with:
-          root_options: "-v --noop"
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.release_root.outputs.tag }}

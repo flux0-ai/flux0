@@ -51,7 +51,6 @@ jobs:
         id: release_package
         uses: python-semantic-release/python-semantic-release@v9.21.0
         with:
-          root_options: "-v --noop"
           directory: ./packages/${{ inputs.package }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           git_committer_name: "github-actions"
@@ -69,7 +68,6 @@ jobs:
         uses: python-semantic-release/publish-action@v9.21.0
         if: steps.release_package.outputs.released == 'true'
         with:
-          root_options: "-v --noop"
           directory: ./packages/${{ inputs.package }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.release_package.outputs.tag }}
