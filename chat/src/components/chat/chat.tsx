@@ -24,7 +24,7 @@ export function Chat({
   const {
     messages,
     streaming,
-    isThinking,
+    processing,
     error,
     resetEvents,
     startStreaming,
@@ -59,7 +59,7 @@ export function Chat({
       <ChatHeader />
       <Messages
         sessionId={sessionId}
-        isLoading={isThinking}
+        processing={processing}
         messages={Array.from(messages.values())}
         setMessages={() => {
           // const messageMap = new Map(updatedMessages.map((msg) => [msg.id, msg]));

@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@flux0-ai/react':
-        specifier: 1.0.0-beta.5
-        version: 1.0.0-beta.5(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: 1.0.0-beta.6
+        version: 1.0.0-beta.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.6
         version: 1.1.6(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -519,8 +519,8 @@ packages:
   '@floating-ui/utils@0.2.9':
     resolution: {integrity: sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==}
 
-  '@flux0-ai/react@1.0.0-beta.5':
-    resolution: {integrity: sha512-IhRzVpIQidig1LNrHuOpSOdVD9IP4ms1eGfFot3iAQS1XjFV6w3gIiPfeBGxndxv1/cLDd2j8jZByCOCvHU2Eg==}
+  '@flux0-ai/react@1.0.0-beta.6':
+    resolution: {integrity: sha512-zgOHksZzTzCATPq24htZrGL3FbSid5KPGEvEhBvSbE4ocuEgEeu9ijI8xAu21w4m4nCE3MRpEy+U3xixPdZKuw==}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
@@ -2863,7 +2863,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.9': {}
 
-  '@flux0-ai/react@1.0.0-beta.5(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@flux0-ai/react@1.0.0-beta.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@microsoft/fetch-event-source': 2.0.1
       mini-rfc6902: 0.3.0

@@ -38,12 +38,12 @@ const render_message_content = (message: Message) => {
 
 const PurePreviewMessage = ({
   message,
-  isLoading,
+  processing,
   setMessages,
   isReadonly,
 }: {
   message: Message;
-  isLoading: boolean;
+  processing: string | undefined;
   setMessages: (
     messages: Message[] | ((messages: Message[]) => Message[]),
   ) => void;
@@ -87,7 +87,7 @@ const PurePreviewMessage = ({
 
             {message.reasoning && (
               <MessageReasoning
-                isLoading={isLoading}
+                processing={processing}
                 reasoning={message.reasoning}
               />
             )}
@@ -173,7 +173,7 @@ const PurePreviewMessage = ({
               <MessageActions
                 key={`action-${message.id}`}
                 message={message}
-                isLoading={isLoading}
+                processing={processing}
               />
             )}
           </div>
@@ -186,7 +186,7 @@ const PurePreviewMessage = ({
 export const PreviewMessage = memo(
   PurePreviewMessage,
   (prevProps, nextProps) => {
-    if (prevProps.isLoading !== nextProps.isLoading) return false;
+    if (prevProps.processing !== nextProps.processing) return false;
     if (prevProps.message.reasoning !== nextProps.message.reasoning)
       return false;
     if (prevProps.message.content !== nextProps.message.content) return false;
@@ -197,7 +197,7 @@ export const PreviewMessage = memo(
   },
 );
 
-export const ThinkingMessage = () => {
+export const ThinkingMessage = ({ processing }: { processing: string }) => {
   const role = "ai_agent";
 
   return (
@@ -221,7 +221,7 @@ export const ThinkingMessage = () => {
 
         <div className="flex flex-col gap-2 w-full">
           <div className="flex flex-col gap-4 text-muted-foreground">
-            Thinking...
+            {processing}
           </div>
         </div>
       </div>
