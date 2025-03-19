@@ -6,12 +6,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 
 interface MessageReasoningProps {
-  isLoading: boolean;
+  processing: string | undefined;
   reasoning: string[] | string | Record<string, unknown>;
 }
 
 export function MessageReasoning({
-  isLoading,
+  processing,
   reasoning,
 }: MessageReasoningProps) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -33,7 +33,7 @@ export function MessageReasoning({
 
   return (
     <div className="flex flex-col">
-      {isLoading ? (
+      {processing ? (
         <div className="flex flex-row gap-2 items-center">
           <div className="font-medium">Reasoning</div>
           <div className="animate-spin">

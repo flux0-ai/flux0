@@ -6,7 +6,7 @@ import { PreviewMessage, ThinkingMessage } from "./message";
 
 interface MessagesProps {
   sessionId: string;
-  isLoading: boolean;
+  processing: string | undefined;
   messages: Array<Message>;
   setMessages: (
     messages: Message[] | ((messages: Message[]) => Message[]),
@@ -16,7 +16,7 @@ interface MessagesProps {
 }
 
 function PureMessages({
-  isLoading,
+  processing,
   messages,
   setMessages,
   isReadonly,
@@ -33,15 +33,17 @@ function PureMessages({
         <PreviewMessage
           key={message.id}
           message={message}
-          isLoading={isLoading && messages.length - 1 === index}
+          processing={messages.length - 1 === index ? processing : undefined}
           setMessages={setMessages}
           isReadonly={isReadonly}
         />
       ))}
 
-      {isLoading &&
+      {processing &&
         messages.length > 0 &&
-        messages[messages.length - 1].source === "user" && <ThinkingMessage />}
+        messages[messages.length - 1].source === "user" && (
+          <ThinkingMessage processing={processing} />
+        )}
 
       <div
         ref={messagesEndRef}
@@ -53,8 +55,7 @@ function PureMessages({
 
 export const Messages = memo(PureMessages, (prevProps, nextProps) => {
   if (prevProps.isBlockVisible && nextProps.isBlockVisible) return true;
-  if (prevProps.isLoading !== nextProps.isLoading) return false;
-  if (prevProps.isLoading && nextProps.isLoading) return false;
+  if (prevProps.processing !== nextProps.processing) return false;
   if (prevProps.messages.length !== nextProps.messages.length) return false;
   // TODO: seems like this is always true because react batches the updates
   // although text is actually streamed in the UI for some reason the messages contains in one render the whole content (all chunks)

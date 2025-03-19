@@ -14,14 +14,14 @@ import { memo } from "react";
 
 export function PureMessageActions({
   message,
-  isLoading,
+  processing,
 }: {
   message: Message;
-  isLoading: boolean;
+  processing: string | undefined;
 }) {
   const [, copyToClipboard] = useCopyToClipboard();
 
-  if (isLoading) return null;
+  if (processing) return null;
   if (message.source === "user") return null;
   if (message.tool_calls && message.tool_calls.length > 0) return null;
 
@@ -51,7 +51,7 @@ export function PureMessageActions({
 export const MessageActions = memo(
   PureMessageActions,
   (prevProps, nextProps) => {
-    if (prevProps.isLoading !== nextProps.isLoading) return false;
+    if (prevProps.processing !== nextProps.processing) return false;
 
     return true;
   },
