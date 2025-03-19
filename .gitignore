@@ -10,4 +10,5 @@ wheels/
 .venv
 
 # Misc
-/tmp
+tmp
+.env
