@@ -1,6 +1,6 @@
 # see https://github.com/astral-sh/uv-docker-example/blob/main/Dockerfile
 # Pin the version of the builder image to ensure reproducibility
-FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
+FROM astral/uv:python3.13-bookworm-slim AS builder
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 # TODO: temporary until flux0-client is published
