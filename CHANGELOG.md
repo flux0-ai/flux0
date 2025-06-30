@@ -1,6 +1,31 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.2 (2025-06-30)
+
+### Bug Fixes
+
+- **chat**: Update loading state references to processing
+  ([`41fb675`](https://github.com/flux0-ai/flux0/commit/41fb675932e5100f3b5c1a374570fc533dfa63b7))
+
+### Chores
+
+- Add a local python index, mainly for testing purposes
+  ([`b06ab6e`](https://github.com/flux0-ai/flux0/commit/b06ab6e92ce8ef5daf0ad2de5028a036e0f63bbd))
+
+- Add vs code configuration for server debugging
+  ([`c3648fc`](https://github.com/flux0-ai/flux0/commit/c3648fcb8ff8220b0e16613c34ba3d2200a012c4))
+
+- Update .gitignore to include .env and fix tmp entry
+  ([`7231840`](https://github.com/flux0-ai/flux0/commit/723184041c0fca07477bfdd3562113361eca33f2))
+
+- **examples**: Add static agent runner for streaming demo
+  ([`a568f49`](https://github.com/flux0-ai/flux0/commit/a568f49881cc0f912dd2c9c0821a5d126d49990a))
+
+- **root**: Update workspace dependencies [skip ci]
+  ([`a4c70c3`](https://github.com/flux0-ai/flux0/commit/a4c70c38a97ed5353a84768b5ff67a41a2a3ee79))
+
+
 ## v0.1.0-beta.1 (2025-03-18)
 
 ### Bug Fixes
