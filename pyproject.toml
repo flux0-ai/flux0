@@ -64,3 +64,9 @@ prerelease_token = "beta"
 
 [tool.semantic_release.publish]
 dist_glob_patterns = ["../../dist/flux0-*"]
+
+[[tool.uv.index]]
+name = "local"
+url = "http://localhost:8585/simple/"
+publish-url = "http://localhost:8585/"
+explicit = true
