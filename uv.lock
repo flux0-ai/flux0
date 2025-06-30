@@ -1,9 +1,10 @@
 version = 1
+revision = 1
 requires-python = ">=3.13"
 
 [manifest]
 members = [
-    "flux0",
+    "flux0-ai",
     "flux0-api",
     "flux0-cli",
     "flux0-core",
@@ -153,8 +154,8 @@ wheels = [
 ]
 
 [[package]]
-name = "flux0"
-version = "0.0.1"
+name = "flux0-ai"
+version = "0.1.0b1"
 source = { editable = "." }
 dependencies = [
     { name = "flux0-cli" },
@@ -183,7 +184,7 @@ dev = [
 
 [[package]]
 name = "flux0-api"
-version = "0.0.1"
+version = "0.1.0b1"
 source = { editable = "packages/api" }
 dependencies = [
     { name = "fastapi" },
@@ -216,6 +217,7 @@ requires-dist = [
     { name = "lagom", marker = "extra == 'lagom'", specifier = ">=2.7.5" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
 ]
+provides-extras = ["lagom"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -226,7 +228,7 @@ dev = [
 
 [[package]]
 name = "flux0-cli"
-version = "0.0.1"
+version = "0.1.0b1"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "click" },
@@ -259,7 +261,7 @@ dependencies = [
 
 [[package]]
 name = "flux0-core"
-version = "0.0.1"
+version = "0.1.0b1"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "aiorwlock" },
@@ -281,7 +283,7 @@ dev = []
 
 [[package]]
 name = "flux0-nanodb"
-version = "0.0.1"
+version = "0.1.0b2"
 source = { editable = "packages/nanodb" }
 
 [package.dev-dependencies]
@@ -296,7 +298,7 @@ dev = [{ name = "pytest-asyncio", specifier = ">=0.25.3" }]
 
 [[package]]
 name = "flux0-server"
-version = "0.0.1"
+version = "0.1.0b2"
 source = { editable = "packages/server" }
 dependencies = [
     { name = "flux0-api" },
@@ -323,7 +325,7 @@ dev = [{ name = "types-toml", specifier = ">=0.10.8.20240310" }]
 
 [[package]]
 name = "flux0-stream"
-version = "0.0.1"
+version = "0.1.0b1"
 source = { editable = "packages/stream" }
 dependencies = [
     { name = "flux0-core" },
@@ -347,6 +349,7 @@ requires-dist = [
     { name = "jsonpatch", specifier = ">=1.33" },
     { name = "langchain-core", marker = "extra == 'langchain'", specifier = ">=0.3.39" },
 ]
+provides-extras = ["langchain"]
 
 [package.metadata.requires-dev]
 dev = [
