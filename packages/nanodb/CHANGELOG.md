@@ -1,6 +1,28 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.2 (2025-06-30)
+
+### Bug Fixes
+
+- **nanodb**: Add Sorting Support to find method in Collection
+  ([`3c0b4a7`](https://github.com/flux0-ai/flux0/commit/3c0b4a7d7b11517e265a38e4c4b1d74a23e1c677))
+
+resolves #69
+
+### Chores
+
+- Exclude tests from sdist builds and update static directory path
+  ([`5f12d0d`](https://github.com/flux0-ai/flux0/commit/5f12d0dc3c711157ad8a4cf847233d42db08dd59))
+
+### Features
+
+- **nanodb**: Implement update_one method for DocumentCollection
+  ([`3d1d7cf`](https://github.com/flux0-ai/flux0/commit/3d1d7cf3202ddbca4119f0e54bbcd66cf4824587))
+
+resolves #68
+
+
 ## v0.1.0-beta.1 (2025-03-18)
 
 ### Chores
