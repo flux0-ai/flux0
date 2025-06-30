@@ -1,6 +1,21 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.2 (2025-06-30)
+
+### Bug Fixes
+
+- **server**: Change local server to openapi spec from ip to host
+  ([`e7527be`](https://github.com/flux0-ai/flux0/commit/e7527be7757240fff0f6384ea872044feec3028d))
+
+resolves #61
+
+### Chores
+
+- Exclude tests from sdist builds and update static directory path
+  ([`5f12d0d`](https://github.com/flux0-ai/flux0/commit/5f12d0dc3c711157ad8a4cf847233d42db08dd59))
+
+
 ## v0.1.0-beta.1 (2025-03-18)
 
 ### Bug Fixes
