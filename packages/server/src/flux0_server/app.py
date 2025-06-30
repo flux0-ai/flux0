@@ -63,7 +63,7 @@ async def create_api_app(c: Container) -> ASGIApp:
             "and responsive AI applications."
         ),
         servers=[
-            {"url": "http://127.0.0.1:8080", "description": "Local server"},
+            {"url": "http://localhost:8080", "description": "Local server"},
         ],
     )
 
