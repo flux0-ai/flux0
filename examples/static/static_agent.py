@@ -50,6 +50,10 @@ class StaticAgentRunner(AgentRunner):
         )
         await asyncio.sleep(1.5)
 
+        await deps.event_emitter.enqueue_status_event(
+            correlation_id=deps.correlator.correlation_id,
+            data=StatusEventData(type="status", status="typing"),
+        )
         # create a chunk event to send a response, we can stream multiple chunks for the same event id
         event_id = EventId(uuid.uuid4().hex)
         cec = ChunkEvent(
