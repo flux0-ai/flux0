@@ -4,7 +4,7 @@
 # documentation.
 # can can locally via:
 # act push -j docker -s DOCKERHUB_USERNAME=user -s DOCKERHUB_TOKEN=dckr_pat_tok -e ./tmp/event.json
-name: Build and Push
+name: Docker - Build and Push
 
 on:
   push:
