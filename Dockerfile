@@ -54,6 +54,7 @@ COPY --from=ui-builder /ui/dist /app/chat
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/modules"
+ENV FLUX0_STATIC_DIR="/app/chat"
 
 # Ensure we're in the app directory (helpful to find the configuration file)
 WORKDIR /app
