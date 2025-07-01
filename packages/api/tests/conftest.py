@@ -122,6 +122,10 @@ class MockAgentRunnerFactory(AgentRunnerFactory):
     def create_runner(self, agent_type: AgentType) -> AgentRunner:
         return self.runner_class()  # Instantiate the injected runner
 
+    def runner_exists(self, agent_type: AgentType) -> bool:
+        # For simplicity, we assume the injected runner always exists
+        return True
+
 
 @pytest.fixture
 def agent_runner_factory() -> AgentRunnerFactory:

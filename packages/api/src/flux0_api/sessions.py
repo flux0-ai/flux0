@@ -76,6 +76,9 @@ def mount_create_session_route(
                 "description": "Session created successfully, Returns the created session along with its generated ID.",
                 "content": example_json_content(session_example),
             },
+            status.HTTP_400_BAD_REQUEST: {
+                "description": "Invalid request parameters, such as missing agent ID or invalid session ID format."
+            },
             status.HTTP_422_UNPROCESSABLE_ENTITY: {
                 "description": "Validation error in request parameters"
             },
@@ -90,7 +93,7 @@ def mount_create_session_route(
         allow_greeting: AllowGreetingQuery = False,
     ) -> SessionDTO:
         """
-        Create a new session bettween a user and an agent.
+        Create a new session between a user and an agent.
 
         The session will be associated with the provided agent and optionally with a user.
         If no user is provided, a guest user will be created.
@@ -100,6 +103,12 @@ def mount_create_session_route(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Agent with ID {params.agent_id} not found",
+            )
+
+        if not session_service._agent_runner_factory.runner_exists(agent.type):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Agent type {agent.type} is not supported by the server",
             )
 
         session = await session_service.create_user_session(
