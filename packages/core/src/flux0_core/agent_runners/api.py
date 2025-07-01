@@ -43,6 +43,9 @@ class AgentRunnerFactory(ABC):
     @abstractmethod
     def create_runner(self, agent_type: AgentType) -> AgentRunner: ...
 
+    @abstractmethod
+    def runner_exists(self, agent_type: AgentType) -> bool: ...
+
 
 T = TypeVar("T", bound=AgentRunner)
 
