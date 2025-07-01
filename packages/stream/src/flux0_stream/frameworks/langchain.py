@@ -1,17 +1,17 @@
-import json
 import time
 from typing import AsyncIterator, Dict, Optional, cast
 
 from flux0_core.agents import Agent
 from flux0_core.logging import Logger
-from flux0_core.sessions import TOOL_CALL_PART_TYPE, EventId, StatusEventData
+from flux0_core.sessions import EventId, StatusEventData
 from flux0_core.types import ensure_json_serializable
 from langchain_core.messages import AIMessage, ToolMessage, message_chunk_to_message
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.runnables.schema import StreamEvent
 
 from flux0_stream.emitter.api import EventEmitter
-from flux0_stream.types import ChunkEvent, JsonPatchOperation
+from flux0_stream.emitter.utils.events import emit_processing_event
+from flux0_stream.types import ChunkEvent
 
 
 class RunContext:
@@ -169,102 +169,41 @@ async def handle_event(
             # )
             # await event_emitter.enqueue_event_chunk(cec)
 
-            ops: list[JsonPatchOperation] = []
             # (2) Process each tool call chunk
+            tool_chunks = {}
             for tool_call in chunk.tool_call_chunks:
-                tool_index = tool_call["index"]
+                # tool_index = tool_call["index"]
                 tool_id = tool_call["id"]
                 tool_name = tool_call["name"]
                 tool_args = tool_call.get("args", None)
 
-                # (3) Ensure tool call entry exists at the correct index
-                # NOTE: some chunks may NOT contain all fields, openai mainly returns first the tool_call_id, tool_name and stream args in the next chunks
-                # I hope this assumption will hold for all providers where tool_id is always in the first chunk
+                # (3) Create string content from tool_id, tool_name and tool_args
                 if tool_id:
-                    ops.append(
-                        {
-                            "op": "add",
-                            "path": f"/tool_calls/{tool_index}",
-                            "value": {
-                                "type": TOOL_CALL_PART_TYPE,
-                                "tool_call_id": tool_id,
-                                "tool_name": "",
-                                # TODO is it safe for all cases?
-                                "args": [],
-                            },
-                        }
-                    )
-
-                # (4) If the tool name is present, update it
+                    tool_chunks["id"] = tool_id
                 if tool_name:
-                    ops.append(
-                        {
-                            "op": "replace",
-                            "path": f"/tool_calls/{tool_index}/tool_name",
-                            "value": tool_name,
-                        }
-                    )
-
-                # (5) If args are received, append them (supporting streaming)
+                    tool_chunks["name"] = tool_name
                 if tool_args:
-                    try:
-                        # Check if args is a valid JSON object
-                        parsed_args = json.loads(tool_args)
-                        # Replace the full args object if it's fully formed
-                        ops.append(
-                            {
-                                "op": "replace",
-                                "path": f"/tool_calls/{tool_index}/args",
-                                "value": parsed_args,
-                            }
-                        )
-                    except json.JSONDecodeError:
-                        # Otherwise, append args as a raw string (for streaming cases)
-                        ops.append(
-                            {
-                                "op": "add",
-                                "path": f"/tool_calls/{tool_index}/args/-",
-                                "value": tool_args,
-                            }
-                        )
+                    tool_chunks["args"] = tool_args
 
-            cec = ChunkEvent(
-                correlation_id=correlation_id,
-                seq=0,
-                event_id=EventId(run_id),
-                patches=ops,
-                timestamp=time.time(),
-                metadata={
-                    "agent_id": agent.id,
-                    "agent_name": agent.name,
-                },
-            )
-            await event_emitter.enqueue_event_chunk(cec)
+            if tool_chunks.get("name") or tool_chunks.get("id"):
+                content = f"called tool: {tool_chunks.get('name', tool_chunks.get('id'))}"
+                await emit_processing_event(
+                    event_emitter=event_emitter,
+                    correlation_id=correlation_id,
+                    content=content,
+                )
         elif msg.invalid_tool_calls:
             for invalid_tool_call in msg.invalid_tool_calls:
-                tool_index = msg.additional_kwargs["tool_calls"][0]["index"]
+                # tool_index = msg.additional_kwargs["tool_calls"][0]["index"]
                 # at this point we take care only of "args"
-                if not invalid_tool_call["args"]:
+                if not invalid_tool_call["args"] or not invalid_tool_call["error"]:
                     continue
-                cec = ChunkEvent(
+                content = f"invalid tool call: {invalid_tool_call['error']}"
+                await emit_processing_event(
+                    event_emitter=event_emitter,
                     correlation_id=correlation_id,
-                    seq=0,
-                    event_id=EventId(run_id),
-                    patches=[
-                        {
-                            "op": "add",
-                            "path": f"/tool_calls/{tool_index}/args/-",
-                            "value": invalid_tool_call["args"],
-                        }
-                    ],
-                    timestamp=time.time(),
-                    metadata={
-                        "agent_id": agent.id,
-                        "agent_name": agent.name,
-                    },
+                    content=content,
                 )
-                await event_emitter.enqueue_event_chunk(cec)
-            pass
         elif msg.response_metadata and msg.response_metadata["finish_reason"] == "tool_calls":
             # print("Tool call request has finished")
             # we could emit ready event here as well but decided to put it on `on_chat_model_end` event
@@ -344,52 +283,11 @@ async def handle_event(
         if not data:
             raise ValueError("No data in event")
         output = cast(ToolMessage, data.get("output"))
-        patches: list[JsonPatchOperation] = []
-        # NOTE: we construct a chunk that looks like ToolEventData, which is actually a list of ToolCall (which looks like ToolCallPart but with result and error)
-        # (1) Ensure /tool_calls exists
-        patches.append(
-            {
-                "op": "add",
-                "path": "/tool_call_results",
-                "value": [],
-            }
-        )
-
-        # (2) Add the tool call
-        patches.append(
-            {
-                "op": "add",
-                "path": "/tool_call_results/-",
-                "value": ensure_json_serializable(
-                    {
-                        "tool_call_id": output.tool_call_id,
-                        "tool_name": output.name,
-                        "data": {"result": output.content},
-                        "args": data.get("input", {}),
-                    }
-                ),
-            }
-        )
-
-        await event_emitter.enqueue_event_chunk(
-            ChunkEvent(
-                correlation_id=correlation_id,
-                seq=0,
-                event_id=EventId(event["run_id"]),
-                patches=patches,
-                timestamp=time.time(),
-                metadata={
-                    "agent_id": agent.id,
-                    "agent_name": agent.name,
-                },
-            )
-        )
-
-        # Emit event that finalized the tool call (this triggers finalization)
-        await event_emitter.enqueue_status_event(
+        tool_name = output.name
+        await emit_processing_event(
+            event_emitter=event_emitter,
             correlation_id=correlation_id,
-            data=StatusEventData(type="status", acknowledged_offset=0, status="ready", data={}),
-            event_id=EventId(event["run_id"]),
+            content=f"tool finished: {tool_name}",
         )
     else:
         raise ValueError(f"Event {event['event']} not implemented")
