@@ -8,42 +8,66 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as ChatLayoutRouteImport } from './routes/_chat/_layout'
+import { Route as ChatLayoutIndexRouteImport } from './routes/_chat/_layout/index'
+import { Route as ChatLayoutSessionSessionIdRouteImport } from './routes/_chat/_layout/session/$sessionId'
+import { Route as ChatLayoutAgentAgentIdRouteImport } from './routes/_chat/_layout/agent/$agentId'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as ChatLayoutImport } from './routes/_chat/_layout'
-import { Route as ChatLayoutIndexImport } from './routes/_chat/_layout/index'
-import { Route as ChatLayoutSessionSessionIdImport } from './routes/_chat/_layout/session/$sessionId'
-import { Route as ChatLayoutAgentAgentIdImport } from './routes/_chat/_layout/agent/$agentId'
-
-// Create/Update Routes
-
-const ChatLayoutRoute = ChatLayoutImport.update({
+const ChatLayoutRoute = ChatLayoutRouteImport.update({
   id: '/_chat/_layout',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const ChatLayoutIndexRoute = ChatLayoutIndexImport.update({
+const ChatLayoutIndexRoute = ChatLayoutIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ChatLayoutRoute,
 } as any)
-
-const ChatLayoutSessionSessionIdRoute = ChatLayoutSessionSessionIdImport.update(
-  {
+const ChatLayoutSessionSessionIdRoute =
+  ChatLayoutSessionSessionIdRouteImport.update({
     id: '/session/$sessionId',
     path: '/session/$sessionId',
     getParentRoute: () => ChatLayoutRoute,
-  } as any,
-)
-
-const ChatLayoutAgentAgentIdRoute = ChatLayoutAgentAgentIdImport.update({
+  } as any)
+const ChatLayoutAgentAgentIdRoute = ChatLayoutAgentAgentIdRouteImport.update({
   id: '/agent/$agentId',
   path: '/agent/$agentId',
   getParentRoute: () => ChatLayoutRoute,
 } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof ChatLayoutIndexRoute
+  '/agent/$agentId': typeof ChatLayoutAgentAgentIdRoute
+  '/session/$sessionId': typeof ChatLayoutSessionSessionIdRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof ChatLayoutIndexRoute
+  '/agent/$agentId': typeof ChatLayoutAgentAgentIdRoute
+  '/session/$sessionId': typeof ChatLayoutSessionSessionIdRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/_chat/_layout': typeof ChatLayoutRouteWithChildren
+  '/_chat/_layout/': typeof ChatLayoutIndexRoute
+  '/_chat/_layout/agent/$agentId': typeof ChatLayoutAgentAgentIdRoute
+  '/_chat/_layout/session/$sessionId': typeof ChatLayoutSessionSessionIdRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/agent/$agentId' | '/session/$sessionId'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/agent/$agentId' | '/session/$sessionId'
+  id:
+    | '__root__'
+    | '/_chat/_layout'
+    | '/_chat/_layout/'
+    | '/_chat/_layout/agent/$agentId'
+    | '/_chat/_layout/session/$sessionId'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  ChatLayoutRoute: typeof ChatLayoutRouteWithChildren
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -51,34 +75,32 @@ declare module '@tanstack/react-router' {
       id: '/_chat/_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof ChatLayoutImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof ChatLayoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_chat/_layout/': {
       id: '/_chat/_layout/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof ChatLayoutIndexImport
-      parentRoute: typeof ChatLayoutImport
-    }
-    '/_chat/_layout/agent/$agentId': {
-      id: '/_chat/_layout/agent/$agentId'
-      path: '/agent/$agentId'
-      fullPath: '/agent/$agentId'
-      preLoaderRoute: typeof ChatLayoutAgentAgentIdImport
-      parentRoute: typeof ChatLayoutImport
+      preLoaderRoute: typeof ChatLayoutIndexRouteImport
+      parentRoute: typeof ChatLayoutRoute
     }
     '/_chat/_layout/session/$sessionId': {
       id: '/_chat/_layout/session/$sessionId'
       path: '/session/$sessionId'
       fullPath: '/session/$sessionId'
-      preLoaderRoute: typeof ChatLayoutSessionSessionIdImport
-      parentRoute: typeof ChatLayoutImport
+      preLoaderRoute: typeof ChatLayoutSessionSessionIdRouteImport
+      parentRoute: typeof ChatLayoutRoute
+    }
+    '/_chat/_layout/agent/$agentId': {
+      id: '/_chat/_layout/agent/$agentId'
+      path: '/agent/$agentId'
+      fullPath: '/agent/$agentId'
+      preLoaderRoute: typeof ChatLayoutAgentAgentIdRouteImport
+      parentRoute: typeof ChatLayoutRoute
     }
   }
 }
-
-// Create and export the route tree
 
 interface ChatLayoutRouteChildren {
   ChatLayoutIndexRoute: typeof ChatLayoutIndexRoute
@@ -96,82 +118,9 @@ const ChatLayoutRouteWithChildren = ChatLayoutRoute._addFileChildren(
   ChatLayoutRouteChildren,
 )
 
-export interface FileRoutesByFullPath {
-  '': typeof ChatLayoutRouteWithChildren
-  '/': typeof ChatLayoutIndexRoute
-  '/agent/$agentId': typeof ChatLayoutAgentAgentIdRoute
-  '/session/$sessionId': typeof ChatLayoutSessionSessionIdRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof ChatLayoutIndexRoute
-  '/agent/$agentId': typeof ChatLayoutAgentAgentIdRoute
-  '/session/$sessionId': typeof ChatLayoutSessionSessionIdRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/_chat/_layout': typeof ChatLayoutRouteWithChildren
-  '/_chat/_layout/': typeof ChatLayoutIndexRoute
-  '/_chat/_layout/agent/$agentId': typeof ChatLayoutAgentAgentIdRoute
-  '/_chat/_layout/session/$sessionId': typeof ChatLayoutSessionSessionIdRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '' | '/' | '/agent/$agentId' | '/session/$sessionId'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agent/$agentId' | '/session/$sessionId'
-  id:
-    | '__root__'
-    | '/_chat/_layout'
-    | '/_chat/_layout/'
-    | '/_chat/_layout/agent/$agentId'
-    | '/_chat/_layout/session/$sessionId'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  ChatLayoutRoute: typeof ChatLayoutRouteWithChildren
-}
-
 const rootRouteChildren: RootRouteChildren = {
   ChatLayoutRoute: ChatLayoutRouteWithChildren,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/_chat/_layout"
-      ]
-    },
-    "/_chat/_layout": {
-      "filePath": "_chat/_layout.tsx",
-      "children": [
-        "/_chat/_layout/",
-        "/_chat/_layout/agent/$agentId",
-        "/_chat/_layout/session/$sessionId"
-      ]
-    },
-    "/_chat/_layout/": {
-      "filePath": "_chat/_layout/index.tsx",
-      "parent": "/_chat/_layout"
-    },
-    "/_chat/_layout/agent/$agentId": {
-      "filePath": "_chat/_layout/agent/$agentId.tsx",
-      "parent": "/_chat/_layout"
-    },
-    "/_chat/_layout/session/$sessionId": {
-      "filePath": "_chat/_layout/session/$sessionId.tsx",
-      "parent": "/_chat/_layout"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

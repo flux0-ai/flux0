@@ -149,7 +149,7 @@ async def serve_app(
         LOGGER.critical(e.__class__.__name__ + ": " + str(e))
         sys.exit(1)
     finally:
-        LOGGER.info("Server is shutting down gracefuly")
+        LOGGER.info("Server is shutting down gracefully")
 
 
 async def get_module_list_from_config() -> list[str]:
