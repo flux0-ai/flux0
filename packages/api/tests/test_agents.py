@@ -8,6 +8,7 @@ from flux0_api.agents import (
     mount_list_agents_route,
     mount_retrieve_agent_route,
 )
+from flux0_api.session_service import SessionService
 from flux0_api.types_agents import AgentCreationParamsDTO, AgentDTO
 from flux0_core.agents import Agent, AgentId, AgentStore
 from flux0_core.ids import gen_id
@@ -18,6 +19,7 @@ async def test_create_agent_success(
     user: User,
     agent: Agent,
     agent_store: AgentStore,
+    session_service: SessionService,
 ) -> None:
     router = APIRouter()
 
@@ -26,7 +28,7 @@ async def test_create_agent_success(
 
     # Create a dummy agent creation DTO. Adjust fields as needed.
     params = AgentCreationParamsDTO(name=agent.name, type=agent.type, description=agent.description)
-    result: AgentDTO = await create_route(user, params, agent_store)
+    result: AgentDTO = await create_route(user, params, agent_store, session_service)
 
     # Assert the returned agent has expected values.
     assert result.model_dump(exclude={"id", "created_at"}) == {

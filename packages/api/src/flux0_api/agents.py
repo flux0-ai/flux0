@@ -5,7 +5,8 @@ from flux0_core.agents import AgentStore
 
 from flux0_api.auth import AuthedUser
 from flux0_api.common import apigen_config, example_json_content
-from flux0_api.dependency_injection import get_agent_store
+from flux0_api.dependency_injection import get_agent_store, get_session_service
+from flux0_api.session_service import SessionService
 from flux0_api.types_agents import (
     AgentCreationParamsDTO,
     AgentDTO,
@@ -19,7 +20,9 @@ API_GROUP = "agents"
 
 def mount_create_agent_route(
     router: APIRouter,
-) -> Callable[[AuthedUser, AgentCreationParamsDTO, AgentStore], Coroutine[None, Any, AgentDTO]]:
+) -> Callable[
+    [AuthedUser, AgentCreationParamsDTO, AgentStore, SessionService], Coroutine[None, Any, AgentDTO]
+]:
     @router.post(
         "",
         tags=[API_GROUP],
@@ -42,8 +45,17 @@ def mount_create_agent_route(
         authedUser: AuthedUser,
         params: AgentCreationParamsDTO,
         agent_store: AgentStore = Depends(get_agent_store),
+        session_service: SessionService = Depends(get_session_service),
     ) -> AgentDTO:
         """Creates a new agent with the specified parameters."""
+
+        # Ensure the agent type is supported by the agent runner factory.
+        if not session_service._agent_runner_factory.runner_exists(params.type):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Agent type '{params.type}' is not supported",
+            )
+
         agent = await agent_store.create_agent(
             name=params and params.name or "Unnamed Agent",
             type=params.type,

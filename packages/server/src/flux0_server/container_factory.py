@@ -17,3 +17,12 @@ class ContainerAgentRunnerFactory(AgentRunnerFactory):
             if issubclass(defi, AgentRunner) and getattr(defi, "agent_type") == agent_type:
                 return self.container[defi]
         raise ValueError(f"No engine found for agent type {agent_type}")
+
+    @override
+    def runner_exists(self, agent_type: AgentType) -> bool:
+        for defi in self.container.defined_types:
+            if not isinstance(defi, type):
+                continue
+            if issubclass(defi, AgentRunner) and getattr(defi, "agent_type") == agent_type:
+                return True
+        return False

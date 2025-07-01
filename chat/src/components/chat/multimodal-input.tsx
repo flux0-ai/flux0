@@ -3,6 +3,7 @@
 import { ArrowUpIcon, StopIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import type { APIError } from "@/lib/api/api";
 import { fetchClientWithThrow } from "@/lib/api/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { memo, useCallback, useEffect, useRef } from "react";
@@ -92,19 +93,27 @@ function PureMultimodalInput({
 
   const submitForm = useCallback(async () => {
     if (newSession) {
-      await fetchClientWithThrow.POST("/api/sessions", {
-        body: {
-          id: sessionId,
-          title: input.split(" ").reduce((acc, word) => {
-            if (acc.length + word.length + 1 <= 15) {
-              return acc + (acc ? " " : "") + word;
-            }
-            return acc;
-          }, ""),
-          agent_id: agentId,
-        },
-      });
-      queyrClient.invalidateQueries({ queryKey: ["get", "/api/sessions", {}] });
+      try {
+        await fetchClientWithThrow.POST("/api/sessions", {
+          body: {
+            id: sessionId,
+            title: input.split(" ").reduce((acc, word) => {
+              if (acc.length + word.length + 1 <= 15) {
+                return acc + (acc ? " " : "") + word;
+              }
+              return acc;
+            }, ""),
+            agent_id: agentId,
+          },
+        });
+        queyrClient.invalidateQueries({
+          queryKey: ["get", "/api/sessions", {}],
+        });
+      } catch (err: unknown) {
+        const error = err as APIError;
+        toast.error(error.detail || "Failed to create new session");
+        return;
+      }
     }
 
     // navigate({ to: '/session/$sessionId', params: { sessionId: sessionIdToRedir } });
@@ -209,7 +218,10 @@ const StopButton = memo(PureStopButton);
 function PureSendButton({
   submitForm,
   input,
-}: { submitForm: () => void; input: string }) {
+}: {
+  submitForm: () => void;
+  input: string;
+}) {
   return (
     <Button
       className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
