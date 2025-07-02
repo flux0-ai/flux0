@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from typing import List, Mapping, Optional, Self, Sequence, TypedDict, Union, override
 
 from flux0_core.agents import Agent, AgentId, AgentStore, AgentType, AgentUpdateParams
-from flux0_core.async_utils import RWLock
 from flux0_core.ids import gen_id
 from flux0_core.sessions import (
     ConsumerId,
@@ -46,7 +45,6 @@ class UserDocumentStore(UserStore):
     def __init__(self, db: DocumentDatabase):
         self.db = db
         self._user_col: DocumentCollection[_UserDocument]
-        self._lock = RWLock()
 
     async def __aenter__(self) -> Self:
         self._user_col = await self.db.create_collection("users", _UserDocument)
@@ -101,8 +99,7 @@ class UserDocumentStore(UserStore):
             email=email,
             created_at=created_at,
         )
-        async with self._lock.writer_lock:
-            await self._user_col.insert_one(document=self._serialize_user(user))
+        await self._user_col.insert_one(document=self._serialize_user(user))
         return user
 
     @override
@@ -110,18 +107,16 @@ class UserDocumentStore(UserStore):
         self,
         user_id: UserId,
     ) -> Optional[User]:
-        async with self._lock.reader_lock:
-            result = await self._user_col.find(Comparison(path="id", op="$eq", value=user_id))
-            return self._deserialize_user(result[0]) if result else None
+        result = await self._user_col.find(Comparison(path="id", op="$eq", value=user_id))
+        return self._deserialize_user(result[0]) if result else None
 
     @override
     async def read_user_by_sub(
         self,
         sub: str,
     ) -> Optional[User]:
-        async with self._lock.reader_lock:
-            result = await self._user_col.find(Comparison(path="sub", op="$eq", value=sub))
-            return self._deserialize_user(result[0]) if result else None
+        result = await self._user_col.find(Comparison(path="sub", op="$eq", value=sub))
+        return self._deserialize_user(result[0]) if result else None
 
     @override
     async def update_user(
@@ -150,7 +145,6 @@ class AgentDocumentStore(AgentStore):
     def __init__(self, db: DocumentDatabase):
         self.db = db
         self._agent_col: DocumentCollection[_AgentDocument]
-        self._lock = RWLock()
 
     async def __aenter__(self) -> Self:
         self._agent_col = await self.db.create_collection("agents", _AgentDocument)
@@ -205,8 +199,7 @@ class AgentDocumentStore(AgentStore):
             description=description,
             created_at=created_at,
         )
-        async with self._lock.writer_lock:
-            await self._agent_col.insert_one(document=self._serialize_agent(agent))
+        await self._agent_col.insert_one(document=self._serialize_agent(agent))
         return agent
 
     @override
@@ -214,9 +207,8 @@ class AgentDocumentStore(AgentStore):
         self,
         agent_id: AgentId,
     ) -> Optional[Agent]:
-        async with self._lock.reader_lock:
-            result = await self._agent_col.find(Comparison(path="id", op="$eq", value=agent_id))
-            return self._deserialize_agent(result[0]) if result else None
+        result = await self._agent_col.find(Comparison(path="id", op="$eq", value=agent_id))
+        return self._deserialize_agent(result[0]) if result else None
 
     @override
     async def list_agents(
@@ -229,8 +221,7 @@ class AgentDocumentStore(AgentStore):
             raise NotImplementedError("Pagination is not supported")
         if projection is not None:
             raise NotImplementedError("Projection not supported")
-        async with self._lock.reader_lock:
-            return [self._deserialize_agent(d) for d in await self._agent_col.find(filters=None)]
+        return [self._deserialize_agent(d) for d in await self._agent_col.find(filters=None)]
 
     @override
     async def update_agent(
@@ -245,11 +236,8 @@ class AgentDocumentStore(AgentStore):
         self,
         agent_id: AgentId,
     ) -> bool:
-        async with self._lock.writer_lock:
-            result = await self._agent_col.delete_one(
-                Comparison(path="id", op="$eq", value=agent_id)
-            )
-            return result.deleted_count > 0
+        result = await self._agent_col.delete_one(Comparison(path="id", op="$eq", value=agent_id))
+        return result.deleted_count > 0
 
 
 #############
@@ -290,7 +278,6 @@ class SessionDocumentStore(SessionStore):
         self.db = db
         self._session_col: DocumentCollection[_SessionDocument]
         self._event_col: DocumentCollection[_EventDocument]
-        self._lock = RWLock()
 
     async def __aenter__(self) -> Self:
         self._session_col = await self.db.create_collection("sessions", _SessionDocument)
@@ -390,8 +377,7 @@ class SessionDocumentStore(SessionStore):
             consumption_offsets=consumption_offsets,
             created_at=created_at,
         )
-        async with self._lock.writer_lock:
-            await self._session_col.insert_one(document=self._serialize_session(session))
+        await self._session_col.insert_one(document=self._serialize_session(session))
         return session
 
     @override
@@ -399,32 +385,30 @@ class SessionDocumentStore(SessionStore):
         self,
         session_id: SessionId,
     ) -> Optional[Session]:
-        async with self._lock.reader_lock:
-            result = await self._session_col.find(Comparison(path="id", op="$eq", value=session_id))
-            return self._deserialize_session(result[0]) if result else None
+        result = await self._session_col.find(Comparison(path="id", op="$eq", value=session_id))
+        return self._deserialize_session(result[0]) if result else None
 
     @override
     async def delete_session(
         self,
         session_id: SessionId,
     ) -> bool:
-        async with self._lock.writer_lock:
-            # delete events
-            events = await self.list_events(session_id)
-            # for event in events:
-            futures = [
-                asyncio.ensure_future(
-                    self._event_col.delete_one(Comparison(path="id", op="$eq", value=e.id))
-                )
-                for e in events
-            ]
-            await asyncio.gather(*futures, return_exceptions=False)
-
-            # delete session
-            result = await self._session_col.delete_one(
-                Comparison(path="id", op="$eq", value=session_id)
+        # delete events
+        events = await self.list_events(session_id)
+        # for event in events:
+        futures = [
+            asyncio.ensure_future(
+                self._event_col.delete_one(Comparison(path="id", op="$eq", value=e.id))
             )
-            return result.deleted_count > 0
+            for e in events
+        ]
+        await asyncio.gather(*futures, return_exceptions=False)
+
+        # delete session
+        result = await self._session_col.delete_one(
+            Comparison(path="id", op="$eq", value=session_id)
+        )
+        return result.deleted_count > 0
 
     @override
     async def update_session(
@@ -452,10 +436,7 @@ class SessionDocumentStore(SessionStore):
         if expressions:
             query_filter = And(expressions=expressions)
 
-        async with self._lock.reader_lock:
-            return [
-                self._deserialize_session(d) for d in await self._session_col.find(query_filter)
-            ]
+        return [self._deserialize_session(d) for d in await self._session_col.find(query_filter)]
 
     @override
     async def create_event(
@@ -468,27 +449,26 @@ class SessionDocumentStore(SessionStore):
         metadata: Optional[Mapping[str, JSONSerializable]] = None,
         created_at: Optional[datetime] = None,
     ) -> Event:
-        async with self._lock.writer_lock:
-            session = await self.read_session(session_id)
-            if session is None:
-                raise ValueError(f"Session not found: {session_id}")
+        session = await self.read_session(session_id)
+        if session is None:
+            raise ValueError(f"Session not found: {session_id}")
 
-            events = await self.list_events(session_id)
-            offset = len(list(events))
+        events = await self.list_events(session_id)
+        offset = len(list(events))
 
-            created_at = created_at or datetime.now(timezone.utc)
-            event = Event(
-                id=EventId(gen_id()),
-                source=source,
-                type=type,
-                offset=offset,
-                correlation_id=correlation_id,
-                data=data,
-                metadata=metadata,
-                deleted=False,
-                created_at=created_at,
-            )
-            await self._event_col.insert_one(document=self._serialize_event(session_id, event))
+        created_at = created_at or datetime.now(timezone.utc)
+        event = Event(
+            id=EventId(gen_id()),
+            source=source,
+            type=type,
+            offset=offset,
+            correlation_id=correlation_id,
+            data=data,
+            metadata=metadata,
+            deleted=False,
+            created_at=created_at,
+        )
+        await self._event_col.insert_one(document=self._serialize_event(session_id, event))
         return event
 
     @override
@@ -497,27 +477,23 @@ class SessionDocumentStore(SessionStore):
         session_id: SessionId,
         event_id: EventId,
     ) -> Optional[Event]:
-        async with self._lock.reader_lock:
-            result = await self._event_col.find(
-                And(
-                    expressions=[
-                        Comparison(path="id", op="$eq", value=event_id),
-                        Comparison(path="session_id", op="$eq", value=session_id),
-                    ]
-                )
+        result = await self._event_col.find(
+            And(
+                expressions=[
+                    Comparison(path="id", op="$eq", value=event_id),
+                    Comparison(path="session_id", op="$eq", value=session_id),
+                ]
             )
-            return self._deserialize_event(result[0]) if result else None
+        )
+        return self._deserialize_event(result[0]) if result else None
 
     @override
     async def delete_event(
         self,
         event_id: EventId,
     ) -> bool:
-        async with self._lock.writer_lock:
-            result = await self._event_col.delete_one(
-                Comparison(path="id", op="$eq", value=event_id)
-            )
-            return result.deleted_count > 0
+        result = await self._event_col.delete_one(Comparison(path="id", op="$eq", value=event_id))
+        return result.deleted_count > 0
 
     @override
     async def list_events(
@@ -550,5 +526,4 @@ class SessionDocumentStore(SessionStore):
         if expressions:
             query_filter = And(expressions=expressions)
 
-        async with self._lock.reader_lock:
-            return [self._deserialize_event(d) for d in await self._event_col.find(query_filter)]
+        return [self._deserialize_event(d) for d in await self._event_col.find(query_filter)]

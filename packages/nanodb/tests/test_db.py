@@ -2,12 +2,14 @@ import uuid
 from typing import Any, List, NotRequired, TypedDict
 
 import pytest
+import pytest_asyncio
 
 # Imports from our implementation and query language.
 from flux0_nanodb.api import (
     DocumentCollection,
     DocumentDatabase,
 )
+from flux0_nanodb.json import JsonDocumentDatabase
 from flux0_nanodb.memory import MemoryDocumentDatabase
 from flux0_nanodb.projection import Projection
 from flux0_nanodb.query import Comparison, QueryFilter
@@ -32,13 +34,29 @@ class SimpleDocument(TypedDict, total=False):
 
 
 # Fixture to provide a DocumentDatabase instance.
-@pytest.fixture
-def db() -> DocumentDatabase:
-    return MemoryDocumentDatabase()
+@pytest_asyncio.fixture(params=["memory", "json"])
+async def db(request):
+    if request.param == "memory":
+        yield MemoryDocumentDatabase()
+    elif request.param == "json":
+        import shutil
+        from pathlib import Path
+
+        data_dir = Path("/tmp/test_data")
+
+        # Clean up any existing test data
+        if data_dir.exists():
+            shutil.rmtree(data_dir)
+
+        yield JsonDocumentDatabase(data_dir=str(data_dir))
+
+        # Cleanup after tests
+        if data_dir.exists():
+            shutil.rmtree(data_dir)
 
 
 # Fixture to provide a collection of TestDocument.
-@pytest.fixture
+@pytest_asyncio.fixture
 async def collection(db: DocumentDatabase) -> DocumentCollection[SimpleDocument]:
     return await db.create_collection("test_collection", SimpleDocument)
 
