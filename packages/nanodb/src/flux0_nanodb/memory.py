@@ -1,6 +1,7 @@
 from typing import Any, List, Mapping, Optional, Protocol, Sequence, Tuple, Type, cast
 
 import jsonpatch
+from flux0_core.async_utils import RWLock
 
 from flux0_nanodb.api import DocumentCollection, DocumentDatabase
 from flux0_nanodb.common import convert_patch, validate_is_total
@@ -26,6 +27,7 @@ class MemoryDocumentCollection(DocumentCollection[TDocument]):
         self._name = name
         self._schema = schema
         self._documents: list[TDocument] = []
+        self._lock = RWLock()
 
     async def find(
         self,
@@ -35,87 +37,93 @@ class MemoryDocumentCollection(DocumentCollection[TDocument]):
         offset: Optional[int] = None,
         sort: Optional[Sequence[Tuple[str, SortingOrder]]] = None,
     ) -> Sequence[TDocument]:
-        docs: Sequence[TDocument] = []
-        # Apply filters
-        if filters is None:
-            docs = self._documents
-        else:
-            docs = [doc for doc in self._documents if matches_query(filters, doc)]
+        async with self._lock.reader_lock:
+            docs: Sequence[TDocument] = []
+            # Apply filters
+            if filters is None:
+                docs = self._documents
+            else:
+                docs = [doc for doc in self._documents if matches_query(filters, doc)]
 
-        # Sorting step: if sort is provided, sort docs on the specified fields.
-        if sort is not None:
-            # Process sort keys in reverse order (stable sort ensures correct overall order)
-            for field, order in reversed(sort):
-                docs.sort(
-                    key=lambda doc: cast(Comparable, doc.get(field, None)),
-                    reverse=(order == SortingOrder.DESC),
-                )
+            # Sorting step: if sort is provided, sort docs on the specified fields.
+            if sort is not None:
+                # Process sort keys in reverse order (stable sort ensures correct overall order)
+                for field, order in reversed(sort):
+                    docs.sort(
+                        key=lambda doc: cast(Comparable, doc.get(field, None)),
+                        reverse=(order == SortingOrder.DESC),
+                    )
 
-        # Apply projection if given
-        if projection:
-            docs = [cast(TDocument, apply_projection(doc, projection)) for doc in docs]
+            # Apply projection if given
+            if projection:
+                docs = [cast(TDocument, apply_projection(doc, projection)) for doc in docs]
 
-        # Validate and apply offset
-        if offset is not None:
-            if offset < 0:
-                raise ValueError("Offset must be non-negative")
-            docs = docs[offset:]
+            # Validate and apply offset
+            if offset is not None:
+                if offset < 0:
+                    raise ValueError("Offset must be non-negative")
+                docs = docs[offset:]
 
-        # Validate and apply limit
-        if limit is not None:
-            if limit < 0:
-                raise ValueError("Limit must be non-negative")
-            docs = docs[:limit]
+            # Validate and apply limit
+            if limit is not None:
+                if limit < 0:
+                    raise ValueError("Limit must be non-negative")
+                docs = docs[:limit]
 
-        return docs
+            return docs
 
     async def insert_one(self, document: TDocument) -> InsertOneResult:
-        self._documents.append(document)
-        validate_is_total(document, self._schema)
-        inserted_id: Optional[DocumentID] = document.get("id")  # type: ignore
-        if inserted_id is None:
-            raise ValueError("Document is missing an 'id' field")
-        return InsertOneResult(acknowledged=True, inserted_id=inserted_id)
+        async with self._lock.writer_lock:
+            self._documents.append(document)
+            validate_is_total(document, self._schema)
+            inserted_id: Optional[DocumentID] = document.get("id")  # type: ignore
+            if inserted_id is None:
+                raise ValueError("Document is missing an 'id' field")
+            return InsertOneResult(acknowledged=True, inserted_id=inserted_id)
 
     async def update_one(
         self, filters: QueryFilter, patch: List[JSONPatchOperation], upsert: bool = False
     ) -> UpdateOneResult:
-        standard_patch = convert_patch(patch)
-        # Look for an existing document matching the filters.
-        for i, doc in enumerate(self._documents):
-            if matches_query(filters, doc):
+        async with self._lock.writer_lock:
+            standard_patch = convert_patch(patch)
+            # Look for an existing document matching the filters.
+            for i, doc in enumerate(self._documents):
+                if matches_query(filters, doc):
+                    try:
+                        updated_doc = jsonpatch.apply_patch(doc, standard_patch, in_place=False)
+                    except jsonpatch.JsonPatchException as e:
+                        raise ValueError("Invalid JSON patch") from e
+                    # validate_is_total(updated_doc, self._schema)
+                    self._documents[i] = cast(TDocument, updated_doc)
+                    return UpdateOneResult(
+                        acknowledged=True, matched_count=1, modified_count=1, upserted_id=None
+                    )
+            # No matching document found.
+            if upsert:
                 try:
-                    updated_doc = jsonpatch.apply_patch(doc, standard_patch, in_place=False)
+                    new_doc = jsonpatch.apply_patch({}, standard_patch, in_place=False)
                 except jsonpatch.JsonPatchException as e:
-                    raise ValueError("Invalid JSON patch") from e
-                # validate_is_total(updated_doc, self._schema)
-                self._documents[i] = cast(TDocument, updated_doc)
+                    raise ValueError("Invalid JSON patch for upsert") from e
+                if "id" not in new_doc:
+                    raise ValueError("Upserted document is missing an 'id' field")
+                validate_is_total(new_doc, self._schema)
+                self._documents.append(cast(TDocument, new_doc))
                 return UpdateOneResult(
-                    acknowledged=True, matched_count=1, modified_count=1, upserted_id=None
+                    acknowledged=True, matched_count=0, modified_count=0, upserted_id=new_doc["id"]
                 )
-        # No matching document found.
-        if upsert:
-            try:
-                new_doc = jsonpatch.apply_patch({}, standard_patch, in_place=False)
-            except jsonpatch.JsonPatchException as e:
-                raise ValueError("Invalid JSON patch for upsert") from e
-            if "id" not in new_doc:
-                raise ValueError("Upserted document is missing an 'id' field")
-            validate_is_total(new_doc, self._schema)
-            self._documents.append(cast(TDocument, new_doc))
             return UpdateOneResult(
-                acknowledged=True, matched_count=0, modified_count=0, upserted_id=new_doc["id"]
+                acknowledged=True, matched_count=0, modified_count=0, upserted_id=None
             )
-        return UpdateOneResult(
-            acknowledged=True, matched_count=0, modified_count=0, upserted_id=None
-        )
 
     async def delete_one(self, filters: QueryFilter) -> DeleteResult[TDocument]:
-        for i, doc in enumerate(self._documents):
-            if matches_query(filters, doc):
-                removed = self._documents.pop(i)
-                return DeleteResult(acknowledged=True, deleted_count=1, deleted_document=removed)
-        return DeleteResult(acknowledged=True, deleted_count=0, deleted_document=None)
+        async with self._lock.writer_lock:
+            for i, doc in enumerate(self._documents):
+                if matches_query(filters, doc):
+                    removed = self._documents.pop(i)
+                    return DeleteResult(
+                        acknowledged=True, deleted_count=1, deleted_document=removed
+                    )
+            return DeleteResult(acknowledged=True, deleted_count=0, deleted_document=None)
 
 
 class MemoryDocumentDatabase(DocumentDatabase):

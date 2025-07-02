@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     auth_type: AuthType = Field(default_factory=lambda: AuthType.NOOP)
     log_level: LogLevel = Field(default_factory=lambda: LogLevel.INFO)
     stores_type: StorageType = Field(default_factory=lambda: StorageType.NANODB_MEMORY)
+    nanodb_persistence_dir: str = Field(default_factory=lambda: "./data/nanodb")
     modules: List[str] = Field(default_factory=list)
 
     @field_validator("modules", mode="before")
