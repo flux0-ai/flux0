@@ -25,7 +25,7 @@ env:
 #   REGISTRY: ghcr.io
 #   IMAGE_NAME: ${{ github.repository }}
     REGISTRY: docker.io
-    IMAGE_NAME: flux0ai/flux0-ai
+    IMAGE_NAME: flux0ai/flux0
 
 jobs:
   docker:
