@@ -24,7 +24,12 @@ jobs:
                 python-version-file: "pyproject.toml"
 
             - name: Install the project
-              run: uv sync --all-packages --all-extras
+              run: uv sync --all-packages --all-extras --all-groups
+
+            - name: Start MongoDB
+              uses: supercharge/mongodb-github-action@1.12.0
+              with:
+                mongodb-version: '8.0'
 
             - name: Run tests
               run: uv run ./scripts/test.py
