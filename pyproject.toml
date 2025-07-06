@@ -20,6 +20,9 @@ dev = [
     "pytest>=8.3.4",
     "ruff>=0.9.10",
 ]
+mongodb = [
+    "pymongo>=4.13.2",
+]
 
 [build-system]
 requires = ["hatchling"]

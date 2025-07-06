@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     log_level: LogLevel = Field(default_factory=lambda: LogLevel.INFO)
     stores_type: StorageType = Field(default_factory=lambda: StorageType.NANODB_MEMORY)
     nanodb_persistence_dir: str = Field(default_factory=lambda: "./data/nanodb")
+    mongodb_uri: str = Field(default_factory=lambda: "mongodb://localhost:27017")
+    mongodb_database_name: str = Field(default_factory=lambda: "flux0")
     modules: List[str] = Field(default_factory=list)
 
     @field_validator("modules", mode="before")
