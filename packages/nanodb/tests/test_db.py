@@ -11,6 +11,7 @@ from flux0_nanodb.api import (
 )
 from flux0_nanodb.json import JsonDocumentDatabase
 from flux0_nanodb.memory import MemoryDocumentDatabase
+from flux0_nanodb.mongodb import MongoDocumentDatabase
 from flux0_nanodb.projection import Projection
 from flux0_nanodb.query import Comparison, QueryFilter
 from flux0_nanodb.types import (
@@ -21,6 +22,7 @@ from flux0_nanodb.types import (
     JSONPatchOperation,
     SortingOrder,
 )
+from pymongo import AsyncMongoClient
 
 
 # A test document that extends our base Document.
@@ -34,7 +36,7 @@ class SimpleDocument(TypedDict, total=False):
 
 
 # Fixture to provide a DocumentDatabase instance.
-@pytest_asyncio.fixture(params=["memory", "json"])
+@pytest_asyncio.fixture(params=["memory", "json", "mongodb"])
 async def db(request):
     if request.param == "memory":
         yield MemoryDocumentDatabase()
@@ -53,6 +55,39 @@ async def db(request):
         # Cleanup after tests
         if data_dir.exists():
             shutil.rmtree(data_dir)
+    elif request.param == "mongodb":
+        from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
+
+        client = AsyncMongoClient("mongodb://localhost:27017")
+        db_instance = MongoDocumentDatabase(client, "test_nanodb")
+
+        # Clean up any existing test data
+        try:
+            await client.drop_database("test_nanodb")
+        except OperationFailure as e:
+            # Database might not exist yet, which is fine
+            # But re-raise if it's a different operation failure
+            if "not found" not in str(e).lower():
+                raise
+        except ServerSelectionTimeoutError:
+            # Re-raise connection issues as they indicate real problems
+            raise
+
+        yield db_instance
+
+        # Cleanup after tests
+        try:
+            await client.drop_database("test_nanodb")
+        except OperationFailure as e:
+            # Database might not exist, which is fine
+            # But re-raise if it's a different operation failure
+            if "not found" not in str(e).lower():
+                raise
+        except ServerSelectionTimeoutError:
+            # Re-raise connection issues as they indicate real problems
+            raise
+        finally:
+            await client.close()
 
 
 # Fixture to provide a collection of TestDocument.

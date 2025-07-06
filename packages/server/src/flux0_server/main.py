@@ -26,6 +26,7 @@ from flux0_core.users import UserStore
 from flux0_nanodb.api import DocumentDatabase
 from flux0_nanodb.json import JsonDocumentDatabase
 from flux0_nanodb.memory import MemoryDocumentDatabase
+from flux0_nanodb.mongodb import create_client
 from flux0_stream.emitter.api import EventEmitter
 from flux0_stream.emitter.memory import MemoryEventEmitter
 from flux0_stream.store.memory import MemoryEventStore
@@ -64,24 +65,25 @@ async def setup_container(
     db: DocumentDatabase
     if settings.stores_type == StorageType.NANODB_MEMORY:
         db = MemoryDocumentDatabase()
-        event_store = await exit_stack.enter_async_context(MemoryEventStore())
-        c[EventEmitter] = Singleton(
-            await exit_stack.enter_async_context(
-                MemoryEventEmitter(event_store=event_store, logger=LOGGER)
-            )
-        )
     elif settings.stores_type == StorageType.NANODB_JSON:
         db = JsonDocumentDatabase(settings.nanodb_persistence_dir)
-        # TODO: event store and event emitter for JSON storage
-        event_store = await exit_stack.enter_async_context(MemoryEventStore())
-        c[EventEmitter] = Singleton(
-            await exit_stack.enter_async_context(
-                MemoryEventEmitter(event_store=event_store, logger=LOGGER)
-            )
-        )
+    elif settings.stores_type == StorageType.MONGODB:
+        from flux0_nanodb.mongodb import MongoDocumentDatabase
+
+        if not settings.mongodb_uri:
+            raise StartupError("MongoDB URI must be provided in settings for MongoDB storage type")
+
+        client = create_client(settings.mongodb_uri)
+        db = MongoDocumentDatabase(client, settings.mongodb_database_name)
     else:
         raise StartupError(f"Unsupported storage type: {settings.stores_type}")
 
+    event_store = await exit_stack.enter_async_context(MemoryEventStore())
+    c[EventEmitter] = Singleton(
+        await exit_stack.enter_async_context(
+            MemoryEventEmitter(event_store=event_store, logger=LOGGER)
+        )
+    )
     global BACKGROUND_TASK_SERVICE
     BACKGROUND_TASK_SERVICE = await exit_stack.enter_async_context(BackgroundTaskService(LOGGER))
     user_store = await exit_stack.enter_async_context(UserDocumentStore(db))
