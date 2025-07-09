@@ -3,6 +3,7 @@ import { fetchClientWithThrow } from "@/lib/api/api";
 import { cn } from "@/lib/utils";
 import { ErrorComponent, Link, createFileRoute } from "@tanstack/react-router";
 import { BotIcon } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 
 export const Route = createFileRoute("/_chat/_layout/")({
   loader: async () => {
@@ -26,60 +27,106 @@ function Index() {
       <div className="flex flex-1 flex-col gap-4 p-4 justify-center">
         <div className="divide-y divide-border overflow-hidden rounded-lg shadow sm:grid sm:grid-cols-2 sm:gap-1 sm:divide-y-0">
           {agents.map((agent, agentIdx) => (
-            <div
+            <AgentCard
               key={agent.id}
-              className={cn(
-                agentIdx === 0
-                  ? "rounded-tl-lg rounded-tr-lg sm:rounded-tr-none"
-                  : "",
-                agentIdx === 1 ? "sm:rounded-tr-lg" : "",
-                agentIdx === agents.length - 2 ? "sm:rounded-bl-lg" : "",
-                agentIdx === agents.length - 1
-                  ? "rounded-bl-lg rounded-br-lg sm:rounded-bl-none"
-                  : "",
-                "group relative bg-muted/40 p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring",
-              )}
-            >
-              <div>
-                <span
-                  className={cn(
-                    "inline-flex rounded-lg p-3 ring-4 ring-secondary",
-                  )}
-                >
-                  <BotIcon aria-hidden="true" className="size-6" />
-                </span>
-              </div>
-              <div className="mt-8">
-                <h3 className="text-base font-semibold">
-                  <Link
-                    to="/agent/$agentId"
-                    params={{ agentId: agent.id }}
-                    className="focus:outline-none"
-                  >
-                    {/* Extend touch target to entire panel */}
-                    <span aria-hidden="true" className="absolute inset-0" />
-                    {agent.name}
-                  </Link>
-                </h3>
-                {/* may put here agent's description
-                            <p className="mt-2 text-sm text-gray-500">
-                            ...
-                            </p>
-                            */}
-              </div>
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute right-6 top-6 text-muted-foreground/20 group-hover:text-muted-foreground/40"
-              >
-                <svg fill="currentColor" viewBox="0 0 24 24" className="size-6">
-                  <title>Open</title>
-                  <path d="M20 4h1a1 1 0 00-1-1v1zm-1 12a1 1 0 102 0h-2zM8 3a1 1 0 000 2V3zM3.293 19.293a1 1 0 101.414 1.414l-1.414-1.414zM19 4v12h2V4h-2zm1-1H8v2h12V3zm-.707.293l-16 16 1.414 1.414 16-16-1.414-1.414z" />
-                </svg>
-              </span>
-            </div>
+              agent={agent}
+              agentIdx={agentIdx}
+              agents={agents}
+            />
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function AgentCard({
+  agent,
+  agentIdx,
+  agents,
+}: {
+  agent: any;
+  agentIdx: number;
+  agents: any[];
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [shouldTruncate, setShouldTruncate] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (textRef.current && agent.description) {
+      // Check if the text is actually being truncated by comparing scroll height vs client height
+      const element = textRef.current;
+      setShouldTruncate(element.scrollHeight > element.clientHeight);
+    }
+  }, [agent.description]);
+
+  return (
+    <div
+      className={cn(
+        agentIdx === 0 ? "rounded-tl-lg rounded-tr-lg sm:rounded-tr-none" : "",
+        agentIdx === 1 ? "sm:rounded-tr-lg" : "",
+        agentIdx === agents.length - 2 ? "sm:rounded-bl-lg" : "",
+        agentIdx === agents.length - 1
+          ? "rounded-bl-lg rounded-br-lg sm:rounded-bl-none"
+          : "",
+        "group relative bg-muted/40 p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring"
+      )}
+    >
+      <div>
+        <span
+          className={cn("inline-flex rounded-lg p-3 ring-4 ring-secondary")}
+        >
+          <BotIcon aria-hidden="true" className="size-6" />
+        </span>
+      </div>
+      <div className="mt-8">
+        <h3 className="text-base font-semibold">
+          <Link
+            to="/agent/$agentId"
+            params={{ agentId: agent.id }}
+            className="focus:outline-none"
+          >
+            {/* Extend touch target to entire panel */}
+            <span aria-hidden="true" className="absolute inset-0" />
+            {agent.name}
+          </Link>
+        </h3>
+        {agent.description && (
+          <div className="mt-2">
+            <p
+              ref={textRef}
+              className={cn(
+                "text-sm text-muted-foreground",
+                !isExpanded && "line-clamp-2"
+              )}
+            >
+              {agent.description}
+            </p>
+            {shouldTruncate && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsExpanded(!isExpanded);
+                }}
+                className="relative z-10 mt-1 text-xs text-primary hover:text-primary/80 focus:outline-none rounded pointer-events-auto"
+              >
+                {isExpanded ? "Show less" : "Show more"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute right-6 top-6 text-muted-foreground/20 group-hover:text-muted-foreground/40"
+      >
+        <svg fill="currentColor" viewBox="0 0 24 24" className="size-6">
+          <title>Open</title>
+          <path d="M20 4h1a1 1 0 00-1-1v1zm-1 12a1 1 0 102 0h-2zM8 3a1 1 0 000 2V3zM3.293 19.293a1 1 0 101.414 1.414l-1.414-1.414zM19 4v12h2V4h-2zm1-1H8v2h12V3zm-.707.293l-16 16 1.414 1.414 16-16-1.414-1.414z" />
+        </svg>
+      </span>
     </div>
   );
 }
