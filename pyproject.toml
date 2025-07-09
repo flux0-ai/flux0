@@ -4,7 +4,7 @@ version = "0.1.0-beta.1"
 requires-python = ">=3.13"
 dependencies = [
     "flux0-server==0.1.0-beta.1",
-    "flux0-cli==0.1.0-beta.1"
+    "flux0-cli==0.1.0-beta.1",
 ]
 
 [tool.uv.sources]
@@ -19,6 +19,12 @@ dev = [
     "mypy>=1.15.0",
     "pytest>=8.3.4",
     "ruff>=0.9.10",
+]
+
+examples = [
+    "langgraph>=0.5.0",
+    "langchain[openai]>=0.3.26",
+    "pydantic-ai-slim[openai]>=0.3.5",
 ]
 
 [build-system]

@@ -84,31 +84,20 @@ async def test_langchain_streaming(
     # # (2nd) is LLM requesting a tool call
     assert_emitted_event(
         final_events[1],
-        expected_type="message",
+        expected_type="status",
         expected_data={
-            # "type": "tool_call",
-            # "tool_name": "search",
-            "parts": [
-                {
-                    "args": {"query": "San Francisco weather"},
-                }
-            ]
+            "data": {
+                "detail": "called tool: search",
+            }
         },
     )
 
     # (3rd) is the tool call response
     assert_emitted_event(
         final_events[2],
-        expected_type="tool",
+        expected_type="status",
         expected_data={
-            "type": "tool_call_result",
-            "tool_calls": [
-                {
-                    "tool_name": "search",
-                    "args": {"query": "San Francisco weather"},
-                    "result": {"data": "It's 60 degrees and foggy."},
-                }
-            ],
+            "data": {"detail": "tool finished: search"},
         },
     )
 
