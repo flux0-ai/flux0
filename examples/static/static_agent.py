@@ -1,16 +1,16 @@
 import asyncio
 import time
 import uuid
-from typing import cast
 
 from flux0_core.agent_runners.api import AgentRunner, Deps, agent_runner
 from flux0_core.agent_runners.context import Context
 from flux0_core.sessions import (
     EventId,
-    MessageEventData,
     StatusEventData,
 )
 from flux0_stream.types import ChunkEvent
+
+from examples.utils.utils import read_user_input, send_processing_event
 
 
 @agent_runner("static_agent")
@@ -21,33 +21,17 @@ class StaticAgentRunner(AgentRunner):
         if not agent:
             raise ValueError(f"Agent with id {context.agent_id} not found")
 
-        # read session events and expect the last event to be the user input
-        events = await deps.list_session_events(context.session_id)
-        last_event = events[-1]
-        if last_event.type != "message":
-            return False
-        user_event_data = cast(MessageEventData, last_event.data)
-        for part in user_event_data["parts"]:
-            if part["type"] == "content":
-                user_input = part["content"]
-                break
+        # read session events and extract user input
+        user_input = await read_user_input(deps, context)
         if not user_input:
-            raise ValueError("No TextPart found in user event data")
+            raise ValueError("No user input found in session events")
 
         deps.logger.info(
             f"User Input: {user_input} for session {context.session_id} and agent {agent.id}"
         )
 
         # send processing event, indicating that the agent is thinking
-        await deps.event_emitter.enqueue_status_event(
-            correlation_id=deps.correlator.correlation_id,
-            data=StatusEventData(
-                type="status",
-                status="processing",
-                # optionally include a detailed processing message
-                data={"detail": "Thinking...!"},
-            ),
-        )
+        await send_processing_event(deps, "Thinking...!")
         await asyncio.sleep(1.5)
 
         await deps.event_emitter.enqueue_status_event(

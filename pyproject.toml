@@ -38,6 +38,12 @@ exclude = [
 flux0-server = "flux0_server.main:main"
 flux0 = "flux0_cli.main:main"
 
+[project.optional-dependencies]
+examples = [
+    "langchain[openai]>=0.3.26",
+    "langgraph>=0.5.1",
+]
+
 [tool.semantic_release]
 build_command = "pip install uv && uv build"
 commit_parser = "./scripts/psr/custom_parser/monorepo_parser.py:ConventionalCommitMonorepoParser"

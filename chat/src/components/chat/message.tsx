@@ -143,7 +143,7 @@ const PurePreviewMessage = ({
                     return (
                       <div key={tool_call_id}>
                         {tool_name === "get_weather" ? (
-                          <div>Custom Weather Component</div>
+                          <div className="bg-muted/50">Custom Weather Widget : {JSON.stringify(result)}</div>
                         ) : (
                           <span className="text-muted-foreground/50">
                             {tool_name} : {JSON.stringify(result)}
