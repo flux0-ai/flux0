@@ -62,7 +62,6 @@ async def setup_container(
     c[Logger] = LOGGER
     c[Logger].set_level(settings.log_level)
 
-    print("@@@", settings.db)
     db: DocumentDatabase
     if settings.db.type == StorageType.NANODB:
         if settings.db.mode == NanoDBStorageType.MEMORY:
