@@ -21,12 +21,12 @@ from flux0_core.storage.nanodb_memory import (
     SessionDocumentStore,
     UserDocumentStore,
 )
-from flux0_core.storage.types import StorageType
+from flux0_core.storage.types import NanoDBStorageType, StorageType
 from flux0_core.users import UserStore
 from flux0_nanodb.api import DocumentDatabase
 from flux0_nanodb.json import JsonDocumentDatabase
 from flux0_nanodb.memory import MemoryDocumentDatabase
-from flux0_nanodb.mongodb import create_client
+from flux0_nanodb.mongodb import MongoDocumentDatabase, create_client
 from flux0_stream.emitter.api import EventEmitter
 from flux0_stream.emitter.memory import MemoryEventEmitter
 from flux0_stream.store.memory import MemoryEventStore
@@ -62,21 +62,27 @@ async def setup_container(
     c[Logger] = LOGGER
     c[Logger].set_level(settings.log_level)
 
+    print("@@@", settings.db)
     db: DocumentDatabase
-    if settings.stores_type == StorageType.NANODB_MEMORY:
-        db = MemoryDocumentDatabase()
-    elif settings.stores_type == StorageType.NANODB_JSON:
-        db = JsonDocumentDatabase(settings.nanodb_persistence_dir)
-    elif settings.stores_type == StorageType.MONGODB:
-        from flux0_nanodb.mongodb import MongoDocumentDatabase
-
-        if not settings.mongodb_uri:
+    if settings.db.type == StorageType.NANODB:
+        if settings.db.mode == NanoDBStorageType.MEMORY:
+            db = MemoryDocumentDatabase()
+        elif settings.db.mode == NanoDBStorageType.JSON:
+            if not settings.db.dir:
+                raise StartupError("Directory must be provided in settings for JSON storage type")
+            db = JsonDocumentDatabase(settings.db.dir)
+    elif settings.db.type == StorageType.MONGODB:
+        if not settings.db.uri:
             raise StartupError("MongoDB URI must be provided in settings for MongoDB storage type")
+        if not settings.db.database:
+            raise StartupError(
+                "MongoDB database name must be provided in settings for MongoDB storage type"
+            )
 
-        client = create_client(settings.mongodb_uri)
-        db = MongoDocumentDatabase(client, settings.mongodb_database_name)
+        client = create_client(settings.db.uri)
+        db = MongoDocumentDatabase(client, settings.db.database)
     else:
-        raise StartupError(f"Unsupported storage type: {settings.stores_type}")
+        raise StartupError(f"Unsupported storage type: {settings.db.type}")
 
     event_store = await exit_stack.enter_async_context(MemoryEventStore())
     c[EventEmitter] = Singleton(
