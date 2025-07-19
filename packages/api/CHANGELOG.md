@@ -1,6 +1,26 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.2 (2025-07-19)
+
+### Bug Fixes
+
+- Undefined agent runner
+  ([`7519025`](https://github.com/flux0-ai/flux0/commit/7519025daf87f4401c699463ca0cb473811747c6))
+
+- when tryintg to create an agent, check if the agent type exists - server now checks requested
+  agent runner type exists before trying to run against it. - ui brings up a toast to indicate
+  "agent doesn't exist" error
+
+### Chores
+
+- Exclude tests from sdist builds and update static directory path
+  ([`5f12d0d`](https://github.com/flux0-ai/flux0/commit/5f12d0dc3c711157ad8a4cf847233d42db08dd59))
+
+- **api**: Update workspace dependencies [skip ci]
+  ([`13346a5`](https://github.com/flux0-ai/flux0/commit/13346a50d833145f147ac3b43ee9842ad26c93ad))
+
+
 ## v0.1.0-beta.1 (2025-03-18)
 
 ### Bug Fixes
