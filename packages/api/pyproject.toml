@@ -4,7 +4,7 @@ version = "0.1.0-beta.1"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115.8",
-    "flux0-core==0.1.0-beta.1",
+    "flux0-core==0.1.0-beta.2",
     "flux0-stream==0.1.0-beta.1",
     "inflection>=0.5.1",
     "lagom>=2.7.5",
