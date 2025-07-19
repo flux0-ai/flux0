@@ -1,6 +1,26 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.3 (2025-07-19)
+
+### Features
+
+- Json persistence nanodb
+  ([`357fc94`](https://github.com/flux0-ai/flux0/commit/357fc943c879c18344a58e14e2914be294802a2b))
+
+implements a json based persistence for nanodb moves the locking mechanism from the store level
+  (UserStore, AgentStore) to the DB level
+
+resolves #51
+
+- Mongodb implementation
+  ([`f0c5953`](https://github.com/flux0-ai/flux0/commit/f0c5953223a48cac07be7e7e3e755da5ffc6a85b))
+
+adds a mongodb database implementation
+
+resolves #85
+
+
 ## v0.1.0-beta.2 (2025-06-30)
 
 ### Bug Fixes
