@@ -3,7 +3,7 @@ name = "flux0-ai"
 version = "0.1.0-beta.2"
 requires-python = ">=3.13"
 dependencies = [
-    "flux0-server==0.1.0-beta.2",
+    "flux0-server==0.1.0-beta.3",
     "flux0-cli==0.1.0-beta.1"
 ]
 
