@@ -1,6 +1,103 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.3 (2025-07-26)
+
+### Bug Fixes
+
+- Refactor db settings to a single env var using URI
+  ([`4fbd928`](https://github.com/flux0-ai/flux0/commit/4fbd9283a52d35e50bb2788dbcb708b0e0ec265c))
+
+For extensibility and best practice, modified DB settings via a single var FLUX0_DB_URI.
+
+Examples:
+
+FLUX0_DB_URI=nanodb://memory FLUX0_DB_URI=nanodb://json?dir=./data
+  FLUX0_DB_URI=mongodb://localhost:27017
+
+- Static agent
+  ([`ab6bf7b`](https://github.com/flux0-ai/flux0/commit/ab6bf7be130ebe59f867f943fbe927d260d2ed93))
+
+fixes an issue with the static agent where the first message wasn't seen, until after a refresh
+
+- Undefined agent runner
+  ([`7519025`](https://github.com/flux0-ai/flux0/commit/7519025daf87f4401c699463ca0cb473811747c6))
+
+- when tryintg to create an agent, check if the agent type exists - server now checks requested
+  agent runner type exists before trying to run against it. - ui brings up a toast to indicate
+  "agent doesn't exist" error
+
+- **chat**: Remove extra rendered comma
+  ([`da9ea72`](https://github.com/flux0-ai/flux0/commit/da9ea722917eb17c3f7a94152ca57dd78d4a43a8))
+
+### Build System
+
+- A GitHub Action for Docker Build & Push with Signing Support
+  ([`8fb367f`](https://github.com/flux0-ai/flux0/commit/8fb367f9f4f90b96b2e022e05ef8730ca06c93dc))
+
+resolves #73
+
+- Clarify github action for building docker image
+  ([`c3bd3c1`](https://github.com/flux0-ai/flux0/commit/c3bd3c1491ef6c51c2039692602260cabefa8103))
+
+- Set FLUX0_STATIC_DIR env var in docker image
+  ([`8684e68`](https://github.com/flux0-ai/flux0/commit/8684e68294fd04a0aefab141a393b2db2c05eddb))
+
+- Use builder image from docker hub
+  ([`6db5bbe`](https://github.com/flux0-ai/flux0/commit/6db5bbe1e3eb704007363122c847a322793f39a1))
+
+- **cicd**: Rename docker image repo name flux0-ai -> flux0
+  ([`9c30f40`](https://github.com/flux0-ai/flux0/commit/9c30f40f765be50a55a927530066b02663e81a04))
+
+- **docker**: Add python libs folder to PYTHONPATH
+  ([`780c969`](https://github.com/flux0-ai/flux0/commit/780c969f7ced642ab914faab41bcfa407320ef72))
+
+### Chores
+
+- Ui package updates
+  ([`b62f46d`](https://github.com/flux0-ai/flux0/commit/b62f46d0c42defecaa4a757d89105e5f762c520c))
+
+updates ui packages because of security issues
+
+- Update flux0 package names and versions for consistency via uv sync
+  ([`26306b9`](https://github.com/flux0-ai/flux0/commit/26306b9c626eec7709e92fb2b00400af1d995feb))
+
+- Update README with quickstart
+  ([`acb64d1`](https://github.com/flux0-ai/flux0/commit/acb64d10d03d51a63268c307cba85bf6fac864b2))
+
+resolves #72
+
+- **chat**: Update package lock file
+  ([`4d1000d`](https://github.com/flux0-ai/flux0/commit/4d1000d4a861cd6395d368193e62111b26d50e93))
+
+- **example**: Add LangChain agent runner example with README and implementation
+  ([`03c5419`](https://github.com/flux0-ai/flux0/commit/03c541923d60930044d73757cfa7555fcc00ccd6))
+
+- **examples**: Add langgraph weather agent example
+  ([`68b59cb`](https://github.com/flux0-ai/flux0/commit/68b59cb3c8dc53ba1b05499ae60e366c219c24cf))
+
+resolves #74
+
+- **root**: Update workspace dependencies [skip ci]
+  ([`2b7cf57`](https://github.com/flux0-ai/flux0/commit/2b7cf573f62c177ce70974f70248c8374b911b45))
+
+### Features
+
+- Agent description
+  ([`7cbe13f`](https://github.com/flux0-ai/flux0/commit/7cbe13f660a3beb086a0d3162f9102ea8056aa6e))
+
+adds agent description in UI agent card
+
+resolves #87
+
+- Mongodb implementation
+  ([`f0c5953`](https://github.com/flux0-ai/flux0/commit/f0c5953223a48cac07be7e7e3e755da5ffc6a85b))
+
+adds a mongodb database implementation
+
+resolves #85
+
+
 ## v0.1.0-beta.2 (2025-06-30)
 
 ### Bug Fixes
