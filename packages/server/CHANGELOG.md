@@ -1,6 +1,55 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.3 (2025-07-26)
+
+### Bug Fixes
+
+- Refactor db settings to a single env var using URI
+  ([`4fbd928`](https://github.com/flux0-ai/flux0/commit/4fbd9283a52d35e50bb2788dbcb708b0e0ec265c))
+
+For extensibility and best practice, modified DB settings via a single var FLUX0_DB_URI.
+
+Examples:
+
+FLUX0_DB_URI=nanodb://memory FLUX0_DB_URI=nanodb://json?dir=./data
+  FLUX0_DB_URI=mongodb://localhost:27017
+
+- Undefined agent runner
+  ([`7519025`](https://github.com/flux0-ai/flux0/commit/7519025daf87f4401c699463ca0cb473811747c6))
+
+- when tryintg to create an agent, check if the agent type exists - server now checks requested
+  agent runner type exists before trying to run against it. - ui brings up a toast to indicate
+  "agent doesn't exist" error
+
+### Chores
+
+- Unnecessary print
+  ([`1d48da6`](https://github.com/flux0-ai/flux0/commit/1d48da66d8df5baee2bf6bb9d50aa55568d4cb97))
+
+removes unnecessary print in main file
+
+- **server**: Update workspace dependencies [skip ci]
+  ([`83e1493`](https://github.com/flux0-ai/flux0/commit/83e1493b67b7b1ed45d990443d1b0304e869dd81))
+
+### Features
+
+- Json persistence nanodb
+  ([`357fc94`](https://github.com/flux0-ai/flux0/commit/357fc943c879c18344a58e14e2914be294802a2b))
+
+implements a json based persistence for nanodb moves the locking mechanism from the store level
+  (UserStore, AgentStore) to the DB level
+
+resolves #51
+
+- Mongodb implementation
+  ([`f0c5953`](https://github.com/flux0-ai/flux0/commit/f0c5953223a48cac07be7e7e3e755da5ffc6a85b))
+
+adds a mongodb database implementation
+
+resolves #85
+
+
 ## v0.1.0-beta.2 (2025-06-30)
 
 ### Bug Fixes
