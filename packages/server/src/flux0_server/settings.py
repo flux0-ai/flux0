@@ -25,13 +25,10 @@ class ParsedStoreConfig(BaseModel):
 def parse_store_uri(uri: str) -> ParsedStoreConfig:
     parsed = urlparse(uri)
     scheme = parsed.scheme
-    print("WTF?!?!?", parsed)
 
     if scheme == "nanodb":
         mode = parsed.hostname or "memory"
         query = parse_qs(parsed.query)
-        print("WTF?!?!", uri)
-        print("ZZZZ", mode, query)
         if mode == "memory":
             return ParsedStoreConfig(type=StorageType.NANODB, mode=NanoDBStorageType.MEMORY)
         elif mode == "json":
