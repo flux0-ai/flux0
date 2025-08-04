@@ -9,7 +9,7 @@ from typing import AsyncIterator, Iterable
 
 import toml
 import uvicorn
-from flux0_api.auth import AuthHandler, AuthType, NoopAuthHandler
+from flux0_api.auth import AuthHandler, JWTAuthOIDC, NoopAuthHandler
 from flux0_api.session_service import SessionService
 from flux0_core.agents import AgentStore
 from flux0_core.background_tasks_service import BackgroundTaskService
@@ -35,7 +35,7 @@ from starlette.types import ASGIApp
 
 from flux0_server.app import create_api_app
 from flux0_server.container_factory import ContainerAgentRunnerFactory
-from flux0_server.settings import EnvType, Settings, settings
+from flux0_server.settings import AuthType, EnvType, Settings, settings
 from flux0_server.version import VERSION
 
 DEFAULT_PORT = 8080
@@ -109,6 +109,8 @@ async def setup_container(
 
     if settings.auth_type == AuthType.NOOP:
         c[AuthHandler] = NoopAuthHandler(user_store=c[UserStore])
+    elif settings.auth_type == AuthType.JWT_OIDC:
+        c[AuthHandler] = JWTAuthOIDC(user_store=c[UserStore])
     else:
         raise StartupError(f"Unsupported auth type: {settings.auth_type}")
 
