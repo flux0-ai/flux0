@@ -70,6 +70,8 @@ async def setup_container(
             if not settings.db.dir:
                 raise StartupError("Directory must be provided in settings for JSON storage type")
             db = JsonDocumentDatabase(settings.db.dir)
+        else:
+            raise StartupError(f"Unsupported NanoDB storage mode: {settings.db.mode}")
     elif settings.db.type == StorageType.MONGODB:
         if not settings.db.uri:
             raise StartupError("MongoDB URI must be provided in settings for MongoDB storage type")
