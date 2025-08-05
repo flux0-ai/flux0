@@ -130,20 +130,42 @@ class SessionService:
         return event
 
     async def _process_session(self, session: Session, agent: Agent) -> None:
-        runner = self._agent_runner_factory.create_runner(agent.type)
-        await runner.run(
-            Context(
-                session_id=session.id,
-                agent_id=session.agent_id,
-            ),
-            Deps(
-                correlator=self._correlator,
-                logger=self._logger,
-                event_emitter=self._event_emitter,
-                agent_store=self._agent_store,
-                session_store=self._session_store,
-            ),
-        )
+        try:
+            runner = self._agent_runner_factory.create_runner(agent.type)
+            await runner.run(
+                Context(
+                    session_id=session.id,
+                    agent_id=session.agent_id,
+                ),
+                Deps(
+                    correlator=self._correlator,
+                    logger=self._logger,
+                    event_emitter=self._event_emitter,
+                    agent_store=self._agent_store,
+                    session_store=self._session_store,
+                ),
+            )
+        except Exception as e:
+            self._logger.error(
+                f"Error processing session {session.id} with agent {agent.id}: {e}",
+                exc_info=True,
+            )
+            await self._event_emitter.enqueue_status_event(
+                correlation_id=self._correlator.correlation_id,
+                data=StatusEventData(type="status", status="error", data=str(e)),
+            )
+            await self._event_emitter.enqueue_status_event(
+                correlation_id=self._correlator.correlation_id,
+                data=StatusEventData(type="status", status="ready"),
+            )
+            await self._event_emitter.enqueue_status_event(
+                correlation_id=self._correlator.correlation_id,
+                data=StatusEventData(
+                    type="status",
+                    status="completed",
+                    acknowledged_offset=0,
+                ),
+            )
 
     async def _dispatch_processing_task_when_ready(
         self,

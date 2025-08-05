@@ -219,3 +219,23 @@ export const TrashIcon = ({ size = 16 }: { size?: number }) => {
     </svg>
   );
 };
+
+export const AlertTriangleIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      viewBox="0 0 16 16"
+      width={size}
+      style={{ color: "currentcolor" }}
+    >
+      <title>Alert Triangle Icon</title>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M8.893 1.5c-.393-.674-1.393-.674-1.786 0L1.107 12.25c-.383.661.122 1.5.893 1.5h12c.771 0 1.276-.839.893-1.5L8.893 1.5zM7.25 10V7h1.5v3h-1.5zm0 2.5V11h1.5v1.5h-1.5z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+};

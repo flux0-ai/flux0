@@ -2,14 +2,16 @@ import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 import type { Message } from "@flux0-ai/react";
 import equal from "fast-deep-equal";
 import { memo } from "react";
+import { ErrorMessage } from "./error-message";
 import { PreviewMessage, ThinkingMessage } from "./message";
 
 interface MessagesProps {
   sessionId: string;
   processing: string | undefined;
+  agentError: string | undefined;
   messages: Array<Message>;
   setMessages: (
-    messages: Message[] | ((messages: Message[]) => Message[]),
+    messages: Message[] | ((messages: Message[]) => Message[])
   ) => void;
   isReadonly: boolean;
   isBlockVisible: boolean;
@@ -17,6 +19,7 @@ interface MessagesProps {
 
 function PureMessages({
   processing,
+  agentError,
   messages,
   setMessages,
   isReadonly,
@@ -45,6 +48,8 @@ function PureMessages({
           <ThinkingMessage processing={processing} />
         )}
 
+      {agentError && <ErrorMessage error={agentError} />}
+
       <div
         ref={messagesEndRef}
         className="shrink-0 min-w-[24px] min-h-[24px]"
@@ -53,14 +58,18 @@ function PureMessages({
   );
 }
 
-export const Messages = memo(PureMessages, (prevProps, nextProps) => {
-  if (prevProps.isBlockVisible && nextProps.isBlockVisible) return true;
-  if (prevProps.processing !== nextProps.processing) return false;
-  if (prevProps.messages.length !== nextProps.messages.length) return false;
-  // TODO: seems like this is always true because react batches the updates
-  // although text is actually streamed in the UI for some reason the messages contains in one render the whole content (all chunks)
-  if (!equal(prevProps.messages, nextProps.messages)) return false;
+export const Messages = memo(
+  PureMessages,
+  (prevProps: MessagesProps, nextProps: MessagesProps) => {
+    if (prevProps.isBlockVisible && nextProps.isBlockVisible) return true;
+    if (prevProps.processing !== nextProps.processing) return false;
+    if (prevProps.agentError !== nextProps.agentError) return false;
+    if (prevProps.messages.length !== nextProps.messages.length) return false;
+    // TODO: seems like this is always true because react batches the updates
+    // although text is actually streamed in the UI for some reason the messages contains in one render the whole content (all chunks)
+    if (!equal(prevProps.messages, nextProps.messages)) return false;
 
-  // TODO I changed this to false because of the equality issue above
-  return false;
-});
+    // TODO I changed this to false because of the equality issue above
+    return false;
+  }
+);

@@ -25,6 +25,7 @@ export function Chat({
     messages,
     streaming,
     processing,
+    agentError,
     error,
     resetEvents,
     startStreaming,
@@ -39,7 +40,7 @@ export function Chat({
       startStreaming(sessionId, input);
       setInput("");
     },
-    [startStreaming, input, sessionId],
+    [startStreaming, input, sessionId]
   );
 
   useEffect(() => {
@@ -60,6 +61,7 @@ export function Chat({
       <Messages
         sessionId={sessionId}
         processing={processing}
+        agentError={agentError}
         messages={Array.from(messages.values())}
         setMessages={() => {
           // const messageMap = new Map(updatedMessages.map((msg) => [msg.id, msg]));
