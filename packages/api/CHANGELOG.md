@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.3 (2025-08-06)
+
+### Bug Fixes
+
+- **api**: Update workspace dependencies
+  ([`475c714`](https://github.com/flux0-ai/flux0/commit/475c71426a7bc2ef0f9efa3394955f99eda4e665))
+
+
 ## v0.1.0-beta.2 (2025-07-19)
 
 ### Bug Fixes
