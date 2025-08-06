@@ -30,7 +30,7 @@ Whether you're building a chatbot, agent system, or AI copilot — Flux0 provide
 
 ### 🧠 Agnostic AI Agent Orchestration
 
-Deploy and manage agents using frameworks like LangGraph, PydanticAI, or any custom logic — with no lock-in.
+Deploy and manage agents using frameworks like **LangGraph**, **PydanticAI**, or any custom logic — with no lock-in.
 
 ### ⚡ Real-Time Streaming
 
