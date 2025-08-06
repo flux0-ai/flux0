@@ -1,6 +1,23 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.4 (2025-08-06)
+
+### Bug Fixes
+
+- Highlight AI framework names in README
+  ([`33ecca4`](https://github.com/flux0-ai/flux0/commit/33ecca4154f9e23c9b7750c896576e2c77914d9e))
+
+- **ci**: Trigger release when internal deps are updated
+  ([`019c560`](https://github.com/flux0-ai/flux0/commit/019c560a94cc37430fc67aef470ad9f74a58337c))
+
+Changed commit type in the dependency update script from 'chore' to 'fix' to ensure semantic-release
+  triggers a patch release for packages with updated internal dependencies.
+
+- **root**: Update workspace dependencies
+  ([`e4c5624`](https://github.com/flux0-ai/flux0/commit/e4c56243688a827448242e81a64cefad7f98f91f))
+
+
 ## v0.1.0-beta.3 (2025-07-26)
 
 ### Bug Fixes
