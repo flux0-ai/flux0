@@ -1,6 +1,21 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.4 (2025-08-06)
+
+### Bug Fixes
+
+- **server**: Update workspace dependencies
+  ([`b6b713f`](https://github.com/flux0-ai/flux0/commit/b6b713fc544197837684f6769ea2434350a51aa1))
+
+### Chores
+
+- Db
+  ([`1361c69`](https://github.com/flux0-ai/flux0/commit/1361c6906785c45246272115496ff4c9a9a22796))
+
+- remove prints - add an else clause to remove db unassigned error
+
+
 ## v0.1.0-beta.3 (2025-07-26)
 
 ### Bug Fixes
