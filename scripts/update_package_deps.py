@@ -118,7 +118,7 @@ def git_commit_and_push() -> None:
             "git",
             "commit",
             "-m",
-            f"chore({PACKAGE_NAME}): update workspace dependencies [skip ci]",
+            f"fix({PACKAGE_NAME}): update workspace dependencies",
         ],
         check=True,
     )
