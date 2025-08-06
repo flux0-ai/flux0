@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.1.0-beta.2 (2025-08-06)
+
+### Bug Fixes
+
+- **stream**: Initial version of README file
+  ([`6f6d92f`](https://github.com/flux0-ai/flux0/commit/6f6d92f54e036866e12e8de645bcecc056dd16a2))
+
+### Chores
+
+- Exclude tests from sdist builds and update static directory path
+  ([`5f12d0d`](https://github.com/flux0-ai/flux0/commit/5f12d0dc3c711157ad8a4cf847233d42db08dd59))
+
+- **stream**: Update workspace dependencies [skip ci]
+  ([`a9546f1`](https://github.com/flux0-ai/flux0/commit/a9546f19263ab3d6d312e906acf71e9d45b1ecde))
+
+
 ## v0.1.0-beta.1 (2025-03-18)
 
 ### Bug Fixes
