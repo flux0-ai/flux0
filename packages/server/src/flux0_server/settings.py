@@ -2,7 +2,6 @@ import enum
 from typing import List, Optional, Union
 from urllib.parse import parse_qs, urlparse
 
-from flux0_api.auth import AuthType
 from flux0_core.logging import LogLevel
 from flux0_core.storage.types import NanoDBStorageType, StorageType
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -45,6 +44,12 @@ def parse_store_uri(uri: str) -> ParsedStoreConfig:
     raise ValueError(f"Unsupported db_uri scheme: {scheme}")
 
 
+class AuthType(enum.Enum):
+    NOOP = "noop"
+    JWT_LOCAL = "jwt_local"
+    JWT_OIDC = "jwt_oidc"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="FLUX0_", enable_decoding=False, extra="allow"
@@ -52,6 +57,8 @@ class Settings(BaseSettings):
     env: EnvType = Field(default=EnvType.PRODUCTION)
     port: int = Field(default=8080)
     auth_type: AuthType = Field(default_factory=lambda: AuthType.NOOP)
+    jwt_oidc_issuer: str = Field(default="")
+    jwt_oidc_audience: str = Field(default="")
     log_level: LogLevel = Field(default_factory=lambda: LogLevel.INFO)
     db_uri: str = Field(default="nanodb://memory")
     modules: List[str] = Field(default_factory=list)
@@ -66,6 +73,18 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def populate_db_config(self) -> "Settings":
         self.db = parse_store_uri(self.db_uri)
+        return self
+
+    @model_validator(mode="after")
+    def validate_oidc(self) -> "Settings":
+        """Validate settings after initialization."""
+        # Validate JWT OIDC settings
+        if self.auth_type == AuthType.JWT_OIDC:
+            if not self.jwt_oidc_issuer:
+                raise ValueError("jwt_oidc_issuer is required when auth_type is JWT_OIDC")
+            if not self.jwt_oidc_audience:
+                raise ValueError("jwt_oidc_audience is required when auth_type is JWT_OIDC")
+
         return self
 
 
