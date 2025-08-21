@@ -254,6 +254,7 @@ class _SessionDocument(TypedDict, total=False):
     title: Optional[str]
     consumption_offsets: Mapping[ConsumerId, int]
     created_at: datetime
+    metadata: Optional[Mapping[str, JSONSerializable]]
 
 
 @dataclass(frozen=True)
@@ -305,6 +306,7 @@ class SessionDocumentStore(SessionStore):
             title=session.title,
             consumption_offsets=session.consumption_offsets,
             created_at=session.created_at,
+            metadata=session.metadata,
         )
 
     def _deserialize_session(
@@ -319,6 +321,7 @@ class SessionDocumentStore(SessionStore):
             title=doc.get("title"),
             consumption_offsets=doc["consumption_offsets"],
             created_at=doc["created_at"],
+            metadata=doc.get("metadata", None),
         )
 
     def _serialize_event(
@@ -364,6 +367,7 @@ class SessionDocumentStore(SessionStore):
         id: Optional[SessionId] = None,
         mode: Optional[SessionMode] = None,
         title: Optional[str] = None,
+        metadata: Optional[Mapping[str, JSONSerializable]] = None,
         created_at: Optional[datetime] = None,
     ) -> Session:
         created_at = created_at or datetime.now(timezone.utc)
@@ -376,6 +380,7 @@ class SessionDocumentStore(SessionStore):
             title=title,
             consumption_offsets=consumption_offsets,
             created_at=created_at,
+            metadata=metadata,
         )
         await self._session_col.insert_one(document=self._serialize_session(session))
         return session
