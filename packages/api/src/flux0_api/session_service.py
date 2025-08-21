@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional, Union
+from typing import Mapping, Optional, Union
 
 from flux0_core.agent_runners.api import AgentRunnerFactory, Deps
 from flux0_core.agent_runners.context import Context
@@ -20,6 +20,7 @@ from flux0_core.sessions import (
     StatusEventData,
     ToolEventData,
 )
+from flux0_core.types import JSONSerializable
 from flux0_core.users import UserId
 from flux0_stream.emitter.api import EventEmitter
 
@@ -50,6 +51,7 @@ class SessionService:
         id: Optional[SessionId] = None,
         title: Optional[str] = None,
         allow_greeting: bool = False,
+        metadata: Optional[Mapping[str, JSONSerializable]] = None,
     ) -> Session:
         session = await self._session_store.create_session(
             user_id=user_id,
@@ -57,6 +59,7 @@ class SessionService:
             id=id,
             title=title,
             created_at=datetime.now(timezone.utc),
+            metadata=metadata,
         )
 
         if allow_greeting:

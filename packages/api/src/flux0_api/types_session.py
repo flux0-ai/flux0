@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Optional, Sequence, TypeAlias
+from typing import Annotated, Mapping, Optional, Sequence, TypeAlias
 
 import dateutil.parser
 from fastapi import Path, Query
@@ -9,7 +9,12 @@ from flux0_core.sessions import SessionId
 from flux0_core.users import UserId
 from pydantic import Field
 
-from flux0_api.common import DEFAULT_MODEL_CONFIG, DefaultBaseModel, ExampleJson
+from flux0_api.common import (
+    DEFAULT_MODEL_CONFIG,
+    DefaultBaseModel,
+    ExampleJson,
+    JSONSerializableDTO,
+)
 from flux0_api.types_agents import agent_id_example, agent_title_example
 from flux0_api.types_users import user_id_example
 
@@ -110,6 +115,7 @@ class SessionDTO(DefaultBaseModel):
     title: Optional[SessionTitleField] = None
     consumption_offsets: ConsumptionOffsetsDTO
     created_at: SessionCreatedField
+    metadata: Optional[Mapping[str, JSONSerializableDTO]] = None
 
 
 class SessionsDTO(DefaultBaseModel):
@@ -139,6 +145,7 @@ class SessionCreationParamsDTO(DefaultBaseModel):
     agent_id: SessionAgentIdPath
     id: Optional[SessionIdPath] = None
     title: Optional[SessionTitleField] = None
+    metadata: Optional[Mapping[str, JSONSerializableDTO]] = None
 
 
 AllowGreetingQuery: TypeAlias = Annotated[

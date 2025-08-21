@@ -117,6 +117,7 @@ def mount_create_session_route(
             agent=agent,
             title=params.title,
             allow_greeting=allow_greeting,
+            metadata=params.metadata,
         )
 
         return SessionDTO(
@@ -126,6 +127,7 @@ def mount_create_session_route(
             title=session.title,
             consumption_offsets=ConsumptionOffsetsDTO(client=session.consumption_offsets["client"]),
             created_at=session.created_at,
+            metadata=session.metadata,
         )
 
     return create_session_route
@@ -172,6 +174,7 @@ def mount_retrieve_session_route(
                 client=session.consumption_offsets["client"],
             ),
             created_at=session.created_at,
+            metadata=session.metadata,
         )
 
     return retrieve_session
@@ -219,6 +222,7 @@ def mount_list_sessions_route(
                         client=s.consumption_offsets["client"],
                     ),
                     created_at=s.created_at,
+                    metadata=s.metadata,
                 )
                 for s in sessions
             ]

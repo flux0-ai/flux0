@@ -35,6 +35,7 @@ class Session:
     title: Optional[str]
     consumption_offsets: Mapping[ConsumerId, int]
     created_at: datetime
+    metadata: Optional[Mapping[str, JSONSerializable]]
 
 
 class SessionUpdateParams(TypedDict, total=False):
@@ -173,6 +174,7 @@ class SessionStore(ABC):
         id: Optional[SessionId] = None,
         mode: Optional[SessionMode] = None,
         title: Optional[str] = None,
+        metadata: Optional[Mapping[str, JSONSerializable]] = None,
         created_at: Optional[datetime] = None,
     ) -> Session: ...
 

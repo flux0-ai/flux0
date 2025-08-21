@@ -70,6 +70,7 @@ def session() -> Session:
         title="Test Session",
         consumption_offsets={},
         created_at=datetime.now(timezone.utc),
+        metadata={},
     )
 
 
