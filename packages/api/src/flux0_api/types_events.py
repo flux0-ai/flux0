@@ -472,7 +472,7 @@ SessionEventCreationParamsContentField: TypeAlias = Annotated[
 
 
 event_creation_params_example: ExampleJson = {
-    "kind": "message",
+    "type": "message",
     "source": "user",
     "content": user_input_content_example,
 }
