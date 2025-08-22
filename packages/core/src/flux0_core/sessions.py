@@ -19,7 +19,7 @@ from flux0_core.types import JSONSerializable
 from flux0_core.users import UserId
 
 SessionId = NewType("SessionId", str)
-SessionMode: TypeAlias = Literal["auto", "manual"]
+SessionMode: TypeAlias = Literal["auto", "manual", "record", "replay"]
 
 
 ConsumerId: TypeAlias = Literal["client"]
@@ -44,6 +44,7 @@ class SessionUpdateParams(TypedDict, total=False):
     mode: SessionMode
     title: Optional[str]
     consumption_offsets: Mapping[ConsumerId, int]
+    metadata: Optional[Mapping[str, JSONSerializable]]
 
 
 EventId = NewType("EventId", str)
