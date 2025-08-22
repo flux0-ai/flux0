@@ -174,3 +174,21 @@ def test_invalid_query_filter_type() -> None:
     # Passing a type that is not a valid QueryFilter should raise a TypeError.
     with pytest.raises(TypeError):
         matches_query(42, {"dummy": "data"})  # type: ignore
+
+
+def test_nested_path_gt_true() -> None:
+    query: QueryFilter = Comparison(path="stats.score", op="$gt", value=50)
+    candidate: Mapping[str, Any] = {"stats": {"score": 60}}
+    assert matches_query(query, candidate)
+
+
+def test_nested_path_in_true() -> None:
+    query: QueryFilter = Comparison(path="profile.age", op="$in", value=[25, 30, 35])
+    candidate: Mapping[str, Any] = {"profile": {"age": 30}}
+    assert matches_query(query, candidate)
+
+
+def test_nested_path_missing_intermediate() -> None:
+    query: QueryFilter = Comparison(path="user.name", op="$eq", value="Alice")
+    candidate: Mapping[str, Any] = {"user": None}  # non-mapping at intermediate hop
+    assert not matches_query(query, candidate)
