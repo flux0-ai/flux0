@@ -24,7 +24,7 @@ from flux0_core.types import JSONSerializable
 from flux0_core.users import User, UserId, UserStore, UserUpdateParams
 from flux0_nanodb.api import DocumentCollection, DocumentDatabase
 from flux0_nanodb.query import And, Comparison, QueryFilter
-from flux0_nanodb.types import DocumentID, DocumentVersion
+from flux0_nanodb.types import DocumentID, DocumentVersion, JSONPatchOperation
 
 
 #############
@@ -421,7 +421,15 @@ class SessionDocumentStore(SessionStore):
         session_id: SessionId,
         params: SessionUpdateParams,
     ) -> Session:
-        raise NotImplementedError
+        update_data = {k: v for k, v in params.items() if v is not None}
+        patch: List[JSONPatchOperation] = [
+            {"op": "replace", "path": f"/{k}", "value": v} for k, v in update_data.items()
+        ]
+        await self._session_col.update_one(Comparison(path="id", op="$eq", value=session_id), patch)
+        updated = await self.read_session(session_id)
+        if not updated:
+            raise ValueError(f"Session not found: {session_id}")
+        return updated
 
     @override
     async def list_sessions(

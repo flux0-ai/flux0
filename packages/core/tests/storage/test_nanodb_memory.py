@@ -2,7 +2,7 @@
 
 import pytest
 from flux0_core.agents import AgentId, AgentStore, AgentType
-from flux0_core.sessions import SessionStore, StatusEventData
+from flux0_core.sessions import SessionStore, SessionUpdateParams, StatusEventData
 from flux0_core.storage.nanodb_memory import (
     AgentDocumentStore,
     SessionDocumentStore,
@@ -108,7 +108,11 @@ async def test_session_crud(session_store: SessionStore) -> None:
     #
     rs = await session_store.read_session(s.id)
     assert rs == s
-    # TODO update
+    rs = await session_store.update_session(s.id, SessionUpdateParams(title="new title"))
+    assert rs.title == "new title"
+    rs = await session_store.read_session(s.id)
+    assert rs is not None
+    assert rs.title == "new title"
     # delete
     #
     ok = await session_store.delete_session(s.id)
