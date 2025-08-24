@@ -53,10 +53,10 @@ async def create_api_app(c: Container) -> ASGIApp:
     correlator = c[ContextualCorrelator]
 
     api_app = FastAPI(
-        title="Flux0 AI Agent API",
-        summary="A flexible API for managing AI-driven agents, sessions, and event streaming in real time.",
+        title="Flux0 API",
+        summary="A powerful framework for deploying AI agents with multi-agent support, session management, event streaming, and LLM-agnostic integration.",
         description=(
-            "The Flux0 API enables developers to create and manage AI agents, interact with them via sessions, "
+            "The Flux0 API enables developers to create, manage and deploy AI agents, interact with them via sessions, "
             "and handle event streaming using JSONPatch (RFC 6902). It is designed to support multi-agent workflows, "
             "facilitate LLM-agnostic integrations, and provide structured interactions with AI-powered assistants. "
             "The API is ideal for orchestrating intelligent assistants, tracking interactions, and ensuring dynamic "

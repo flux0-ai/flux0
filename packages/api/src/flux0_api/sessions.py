@@ -66,7 +66,7 @@ def mount_create_session_route(
     @router.post(
         "",
         tags=[API_GROUP],
-        summary="Create a new session",
+        summary="Create Session",
         operation_id="create_session",
         response_model=SessionDTO,
         status_code=201,
@@ -421,9 +421,9 @@ def mount_create_event_and_stream_route(
         "/{session_id}/events/stream",
         tags=[API_GROUP],
         status_code=status.HTTP_200_OK,
-        operation_id="create_session_event",
-        summary="Create and stream session events",
-        description="Creates a new event in the specified session and streams upcoming events.",
+        operation_id="create_event_and_stream",
+        summary="Create Event and Stream",
+        description="Creates a new user event in the specified session and streams upcoming events.",
         response_class=StreamingResponse,
         response_model=SessionStream,
         responses={

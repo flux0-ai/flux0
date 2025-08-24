@@ -20,7 +20,7 @@ agent_example: ExampleJson = {
     "name": agent_name_examples[0],
     "type": agent_type_example,
     "description": agent_description_example,
-    "creation_utc": "2025-01-21T23:44:48",
+    "created_at": "2025-01-21T23:44:48",
 }
 
 
