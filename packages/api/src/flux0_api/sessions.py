@@ -314,6 +314,7 @@ async def event_stream(
         # Unsubscribe when client disconnects
         print("unsubscribed from correlation_id", correlation_id)
         event_emitter.unsubscribe_processed(correlation_id, subscriber)
+        event_emitter.unsubscribe_final(correlation_id, subscriber_final)
         # Explicitly send a termination event before closing
         # yield "event: close\ndata: {}\n\n"
 
