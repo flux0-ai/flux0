@@ -3,6 +3,7 @@ from typing import Optional, Type, TypeVar, cast
 import inflection
 from fastapi import HTTPException, Request
 from flux0_core.agents import AgentStore
+from flux0_core.recordings import RecordingStore
 from flux0_core.sessions import SessionStore
 from flux0_core.users import UserStore
 from flux0_stream.emitter.api import EventEmitter
@@ -75,6 +76,10 @@ def get_agent_store(request: Request) -> AgentStore:
 
 def get_user_store(request: Request) -> UserStore:
     return resolve_dependency(request, UserStore)
+
+
+def get_recording_store(request: Request) -> RecordingStore:
+    return resolve_dependency(request, RecordingStore)
 
 
 def get_event_emitter(request: Request) -> EventEmitter:

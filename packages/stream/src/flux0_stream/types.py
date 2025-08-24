@@ -34,6 +34,7 @@ class EmittedEvent:
     correlation_id: str
     data: Union[MessageEventData, StatusEventData, ToolEventData]
     metadata: Optional[Mapping[str, JSONSerializable]] = None
+    timestamp: float = field(default_factory=time.time)
 
 
 class AddOperation(TypedDict):

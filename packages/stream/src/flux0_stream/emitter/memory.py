@@ -50,10 +50,7 @@ class MemoryEventEmitter(EventEmitter):
         self._worker_task: asyncio.Task[None] = asyncio.create_task(self._worker_loop())
 
     async def enqueue_status_event(
-        self,
-        correlation_id: str,
-        data: StatusEventData,
-        event_id: Optional[EventId] = None,
+        self, correlation_id: str, data: StatusEventData, event_id: Optional[EventId] = None
     ) -> None:
         """Enqueues a status event for a specific execution (correlation_id)."""
         await self.queue.put(QueueMessage(correlation_id, event_id, data))
@@ -135,19 +132,19 @@ class MemoryEventEmitter(EventEmitter):
             if correlation_id in self.final_subscribers:
                 for subscriber in self.final_subscribers[correlation_id]:
                     await subscriber(finalized_event)
-        else:
-            # Notify final subscribers for non final status updates
-            if correlation_id in self.final_subscribers:
-                for subscriber in self.final_subscribers[correlation_id]:
-                    await subscriber(
-                        EmittedEvent(
-                            id=event_id if event_id is not None else EventId(""),
-                            correlation_id=correlation_id,
-                            source="ai_agent",
-                            type="status",
-                            data=data,
-                        )
+
+        # Notify final subscribers for non final status updates
+        if correlation_id in self.final_subscribers:
+            for subscriber in self.final_subscribers[correlation_id]:
+                await subscriber(
+                    EmittedEvent(
+                        id=event_id if event_id is not None else EventId(""),
+                        correlation_id=correlation_id,
+                        source="ai_agent",
+                        type="status",
+                        data=data,
                     )
+                )
 
     async def shutdown(self) -> None:
         """Shuts down the event emitter, ensuring all queued events are processed."""

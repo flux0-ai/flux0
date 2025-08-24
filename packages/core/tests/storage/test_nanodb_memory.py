@@ -1,10 +1,29 @@
 # Fixture to provide a DocumentDatabase instance.
 
+from datetime import datetime, timedelta, timezone
+from typing import Sequence
+
 import pytest
 from flux0_core.agents import AgentId, AgentStore, AgentType
-from flux0_core.sessions import SessionStore, SessionUpdateParams, StatusEventData
+from flux0_core.recordings import (
+    RecordedChunkPayload,
+    RecordedEmittedPayload,
+    RecordedEvent,
+    RecordingId,
+    RecordingStore,
+)
+from flux0_core.sessions import (
+    EventId,
+    MessageEventData,
+    SessionId,
+    SessionStatus,
+    SessionStore,
+    SessionUpdateParams,
+    StatusEventData,
+)
 from flux0_core.storage.nanodb_memory import (
     AgentDocumentStore,
+    RecordingDocumentStore,
     SessionDocumentStore,
     UserDocumentStore,
     _SessionDocument,
@@ -261,3 +280,194 @@ async def test_session_events_list(session_store: SessionStore) -> None:
     assert len(es) == 0
     ok = await session_store.delete_session(s.id)
     assert not ok
+
+
+#############
+# Recording
+#############
+
+
+@pytest.fixture
+async def recording_store(db: DocumentDatabase) -> RecordingStore:
+    async with RecordingDocumentStore(db) as store:
+        return store
+
+
+def _tz(dt: datetime) -> datetime:
+    # Ensure tz-aware UTC
+    if dt.tzinfo is None or dt.utcoffset() is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _make_user_message_payload(
+    correlation_id: str, msg: str, *, eid: EventId = EventId("m1")
+) -> RecordedEmittedPayload:
+    md: MessageEventData = {
+        "type": "message",
+        "participant": {"id": UserId("u1"), "name": "Anonymous"},
+        "flagged": False,
+        "tags": [],
+        "parts": [{"type": "content", "content": msg}],
+    }
+    return {
+        "id": eid,
+        "source": "user",
+        "type": "message",
+        "correlation_id": correlation_id,
+        "data": md,
+        "metadata": {},
+    }
+
+
+def _make_status_payload(
+    correlation_id: str, status: SessionStatus, *, eid: str = ""
+) -> RecordedEmittedPayload:
+    sd: StatusEventData = {"type": "status", "status": status}
+    return {
+        "id": EventId(eid),
+        "source": "ai_agent",
+        "type": "status",
+        "correlation_id": correlation_id,
+        "data": sd,
+        "metadata": {},
+    }
+
+
+def _make_chunk_payload(correlation_id: str, event_id: EventId, seq: int) -> RecordedChunkPayload:
+    return {
+        "correlation_id": correlation_id,
+        "event_id": event_id,
+        "seq": seq,
+        "patches": [
+            {"op": "add", "path": "/-", "value": f"chunk-{seq}"},
+        ],
+        "metadata": {"agent_id": "A1", "agent_name": "STATIC"},
+    }
+
+
+# ----------------------
+# Tests
+# ----------------------
+
+
+async def test_create_and_read_header(recording_store: RecordingStore) -> None:
+    session_id = SessionId("s1")
+    header = await recording_store.create_recording(
+        source_session_id=session_id, created_at=_tz(datetime.now(timezone.utc))
+    )
+
+    # read by recording id
+    h2 = await recording_store.read_header_by_recording_id(header.recording_id)
+    assert h2 is not None
+    assert h2.recording_id == header.recording_id
+    assert h2.offset == 0
+    assert h2.kind == "header"
+
+    # read by source session id
+    h3 = await recording_store.read_header_by_source_session_id(session_id)
+    assert h3 is not None
+    assert h3.recording_id == header.recording_id
+
+
+async def test_append_and_order(recording_store: RecordingStore) -> None:
+    session_id = SessionId("s2")
+    header = await recording_store.create_recording(
+        source_session_id=session_id, created_at=_tz(datetime.now(timezone.utc))
+    )
+
+    # append emitted (user message), chunk, status
+    e1 = await recording_store.append_emitted(
+        header.recording_id,
+        _make_user_message_payload("c1", "hi"),
+        created_at=_tz(datetime.now(timezone.utc)),
+    )
+    c1 = await recording_store.append_chunk(
+        header.recording_id,
+        _make_chunk_payload("c1", EventId("e1"), 0),
+        created_at=_tz(datetime.now(timezone.utc) + timedelta(milliseconds=5)),
+    )
+    e2 = await recording_store.append_emitted(
+        header.recording_id,
+        _make_status_payload("c1", "completed"),
+        created_at=_tz(datetime.now(timezone.utc) + timedelta(milliseconds=10)),
+    )
+
+    assert e1.offset == 1
+    assert c1.offset == 2
+    assert e2.offset == 3
+    assert e1.created_at.tzinfo is not None and e1.created_at.utcoffset() is not None
+
+
+async def test_read_next_turn_range_and_frames(recording_store: RecordingStore) -> None:
+    session_id = SessionId("s3")
+    h = await recording_store.create_recording(
+        source_session_id=session_id, created_at=_tz(datetime.now(timezone.utc))
+    )
+
+    # Build a timeline with two user turns
+    # Turn 0 start (user)
+    await recording_store.append_emitted(
+        h.recording_id,
+        _make_user_message_payload("c1", "u0"),
+        created_at=_tz(datetime.now(timezone.utc)),
+    )  # off=1
+    # AI status + chunk inside turn 0
+    await recording_store.append_emitted(
+        h.recording_id,
+        _make_status_payload("c1", "processing"),
+        created_at=_tz(datetime.now(timezone.utc)),
+    )  # off=2
+    await recording_store.append_chunk(
+        h.recording_id,
+        _make_chunk_payload("c1", EventId("evA"), 0),
+        created_at=_tz(datetime.now(timezone.utc)),
+    )  # off=3
+    # Turn 1 start (user)
+    await recording_store.append_emitted(
+        h.recording_id,
+        _make_user_message_payload("c2", "u1", eid=EventId("m2")),
+        created_at=_tz(datetime.now(timezone.utc)),
+    )  # off=4
+    # Some more frames (ai)
+    await recording_store.append_chunk(
+        h.recording_id,
+        _make_chunk_payload("c2", EventId("evB"), 0),
+        created_at=_tz(datetime.now(timezone.utc)),
+    )  # off=5
+
+    # after=0 → first turn [1, 4)
+    rng0 = await recording_store.read_next_turn_range_after_offset(h.recording_id, after_offset=0)
+    assert rng0 == (1, 4)
+
+    frames0: Sequence[RecordedEvent] = await recording_store.read_frames_range(h.recording_id, 1, 4)
+    offs0 = [f.offset for f in frames0]
+    assert offs0 == [1, 2, 3]
+
+    # after=3 → next turn starts at 4, end=None
+    rng1 = await recording_store.read_next_turn_range_after_offset(h.recording_id, after_offset=3)
+    assert rng1 == (4, None)
+
+    frames1: Sequence[RecordedEvent] = await recording_store.read_frames_range(
+        h.recording_id, 4, None
+    )
+    offs1 = [f.offset for f in frames1]
+    assert offs1 == [4, 5]
+
+
+async def test_append_without_header_raises(recording_store: RecordingStore) -> None:
+    with pytest.raises(ValueError):
+        await recording_store.append_emitted(
+            RecordingId("rec-missing"), _make_status_payload("c", "processing")
+        )
+    with pytest.raises(ValueError):
+        await recording_store.append_chunk(
+            RecordingId("rec-missing"), _make_chunk_payload("c", EventId("e"), 0)
+        )
+
+
+async def test_read_header_by_source_session_id_none(
+    recording_store: RecordingStore,
+) -> None:
+    res = await recording_store.read_header_by_source_session_id(SessionId("nope"))
+    assert res is None

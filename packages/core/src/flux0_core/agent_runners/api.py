@@ -5,6 +5,7 @@ from flux0_core.agent_runners.context import Context
 from flux0_core.agents import Agent, AgentId, AgentStore, AgentType
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.logging import Logger
+from flux0_core.recordings import RecordingStore
 from flux0_core.sessions import Event, Session, SessionId, SessionStore
 from flux0_stream.emitter.api import EventEmitter
 
@@ -17,12 +18,14 @@ class Deps:
         event_emitter: EventEmitter,
         agent_store: AgentStore,
         session_store: SessionStore,
+        recording_store: RecordingStore,
     ) -> None:
         self.correlator = correlator
         self.logger = logger
         self.event_emitter = event_emitter
         self._session_store = session_store
         self._agent_store = agent_store
+        self._recording_store = recording_store
 
     async def read_session(self, session_id: SessionId) -> Optional[Session]:
         return await self._session_store.read_session(session_id)

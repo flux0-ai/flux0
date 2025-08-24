@@ -12,9 +12,11 @@ from flux0_core.agents import Agent, AgentId, AgentStore, AgentType
 from flux0_core.background_tasks_service import BackgroundTaskService
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.logging import ContextualLogger, Logger
+from flux0_core.recordings import RecordingStore
 from flux0_core.sessions import Session, SessionId, SessionStore
 from flux0_core.storage.nanodb_memory import (
     AgentDocumentStore,
+    RecordingDocumentStore,
     SessionDocumentStore,
     UserDocumentStore,
 )
@@ -105,6 +107,14 @@ async def session_store(
 
 
 @pytest.fixture
+async def recording_store(
+    document_db: DocumentDatabase,
+) -> AsyncGenerator[RecordingStore, None]:
+    async with RecordingDocumentStore(db=document_db) as store:
+        yield store
+
+
+@pytest.fixture
 def background_task_service(logger: Logger) -> BackgroundTaskService:
     return BackgroundTaskService(logger=logger)
 
@@ -151,6 +161,7 @@ def session_service(
     correlator: ContextualCorrelator,
     logger: Logger,
     session_store: SessionStore,
+    recording_store: RecordingStore,
     agent_store: AgentStore,
     background_task_service: BackgroundTaskService,
     agent_runner_factory: AgentRunnerFactory,
@@ -161,6 +172,7 @@ def session_service(
         logger=logger,
         agent_store=agent_store,
         session_store=session_store,
+        recording_store=recording_store,
         background_task_service=background_task_service,
         agent_runner_factory=agent_runner_factory,
         event_emitter=event_emitter,
