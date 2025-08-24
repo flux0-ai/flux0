@@ -96,9 +96,12 @@ async def test_langchain_streaming(
         },
     )
 
-    # (3rd) is the tool call response
+    # (3rd) is a ready
+    assert_emitted_event(final_events[2], expected_type="status", expected_data={"status": "ready"})
+
+    # (4th) is the tool call response
     assert_emitted_event(
-        final_events[2],
+        final_events[3],
         expected_type="tool",
         expected_data={
             "type": "tool_call_result",
@@ -112,14 +115,12 @@ async def test_langchain_streaming(
         },
     )
 
-    # (4th) LLM is processing a new message
-    assert_emitted_event(
-        final_events[3], expected_type="status", expected_data={"status": "processing"}
-    )
+    # (5th) LLM is processing a new message
+    assert_emitted_event(final_events[4], expected_type="status", expected_data={"status": "ready"})
 
-    # (5th) LLM generated a message once received the tool call result
+    # (6th) LLM generated a message once received the tool call result
     assert_emitted_event(
-        final_events[4],
+        final_events[6],
         expected_type="message",
         expected_data={
             "parts": [

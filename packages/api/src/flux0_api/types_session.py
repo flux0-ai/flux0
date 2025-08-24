@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Mapping, Optional, Sequence, TypeAlias
+from typing import Annotated, Literal, Mapping, Optional, Sequence, TypeAlias
 
 import dateutil.parser
 from fastapi import Path, Query
@@ -29,7 +29,6 @@ SessionIdPath: TypeAlias = Annotated[
     ),
 ]
 
-
 SessionAgentIdPath: TypeAlias = Annotated[
     AgentId,
     Path(
@@ -49,6 +48,9 @@ SessionUserIdField: TypeAlias = Annotated[
         max_length=10,
     ),
 ]
+
+# corresponds to SessionMode
+SessionModeField: TypeAlias = Literal["auto", "manual", "record", "replay"]
 
 SessionCreatedField: TypeAlias = Annotated[
     datetime,
@@ -112,6 +114,7 @@ class SessionDTO(DefaultBaseModel):
     id: SessionIdPath
     agent_id: SessionAgentIdPath
     user_id: SessionUserIdField
+    mode: SessionModeField
     title: Optional[SessionTitleField] = None
     consumption_offsets: ConsumptionOffsetsDTO
     created_at: SessionCreatedField
@@ -146,6 +149,7 @@ class SessionCreationParamsDTO(DefaultBaseModel):
     id: Optional[SessionIdPath] = None
     title: Optional[SessionTitleField] = None
     metadata: Optional[Mapping[str, JSONSerializableDTO]] = None
+    mode: Optional[SessionModeField] = None
 
 
 AllowGreetingQuery: TypeAlias = Annotated[

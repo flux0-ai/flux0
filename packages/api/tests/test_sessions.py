@@ -1,12 +1,13 @@
 import asyncio
 import json
+import time
 from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from flux0_api.session_service import SessionService
 from flux0_api.sessions import (
@@ -29,6 +30,7 @@ from flux0_core.agent_runners.context import Context
 from flux0_core.agents import Agent, AgentId, AgentStore
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.ids import gen_id
+from flux0_core.recordings import RecordingId, RecordingStore
 from flux0_core.sessions import (
     ContentPart,
     EventId,
@@ -41,6 +43,7 @@ from flux0_core.sessions import (
 )
 from flux0_core.users import User, UserStore
 from flux0_stream.emitter.api import EventEmitter
+from flux0_stream.types import ChunkEvent
 
 from .conftest import MockAgentRunnerFactory
 
@@ -50,6 +53,7 @@ async def test_create_session_success(
     agent: Agent,
     agent_store: AgentStore,
     session_service: SessionService,
+    recording_store: RecordingStore,
 ) -> None:
     agent = await agent_store.create_agent(
         name=agent.name, type=agent.type, description=agent.description
@@ -62,8 +66,9 @@ async def test_create_session_success(
 
     # Create a dummy session creation DTO. Adjust fields as needed.
     params = SessionCreationParamsDTO(agent_id=agent.id, title="Test session")
+    response = Response()
     result: SessionDTO = await create_session_route(
-        user, params, agent_store, session_service, False
+        user, response, params, agent_store, session_service, recording_store, False
     )
 
     # Assert the returned session has expected values.
@@ -82,6 +87,7 @@ async def test_create_session_with_greeting_success(
     user: User,
     agent: Agent,
     agent_store: AgentStore,
+    recording_store: RecordingStore,
     session_service: SessionService,
 ) -> None:
     class MockAgentRunner(AgentRunner):
@@ -99,8 +105,9 @@ async def test_create_session_with_greeting_success(
 
     # Create a dummy session creation DTO. Adjust fields as needed.
     params = SessionCreationParamsDTO(agent_id=agent.id, title="Test session")
+    response = Response()
     result: SessionDTO = await create_session_route(
-        user, params, agent_store, session_service, True
+        user, response, params, agent_store, session_service, recording_store, True
     )
 
     # Assert the returned session has expected values.
@@ -120,13 +127,20 @@ async def test_create_session_with_greeting_success(
 
 
 async def test_create_session_agent_not_found_failure(
-    user: User, agent_store: AgentStore, session_service: SessionService
+    user: User,
+    agent_store: AgentStore,
+    session_service: SessionService,
+    recording_store: RecordingStore,
 ) -> None:
     router = APIRouter()
     create_session_route = mount_create_session_route(router)
     params = SessionCreationParamsDTO(agent_id=AgentId(gen_id()), title="Test session")
+
+    response = Response()
     with pytest.raises(HTTPException) as exc_info:
-        await create_session_route(user, params, agent_store, session_service, False)
+        await create_session_route(
+            user, response, params, agent_store, session_service, recording_store, False
+        )
     assert exc_info.value.status_code == 400
 
 
@@ -140,7 +154,6 @@ async def test_get_session_success(
     rs = await get_session_route(user, session.id, session_store)
 
     session_dict = asdict(session)
-    session_dict.pop("mode")
     assert rs.model_dump() == session_dict
 
 
@@ -199,6 +212,7 @@ async def test_create_event_and_stream_success(
     session_service: SessionService,
     user_store: UserStore,
     agent_store: AgentStore,
+    recording_store: RecordingStore,
     event_emitter: EventEmitter,
 ) -> None:
     agent = await agent_store.create_agent(name=agent.name, type=agent.type)
@@ -231,6 +245,7 @@ async def test_create_event_and_stream_success(
         session_store,
         user_store,
         agent_store,
+        recording_store,
         event_emitter,
     )
     assert response.status_code == 200
@@ -335,3 +350,179 @@ async def test_list_session_events_success(
         [EventTypeDTO.MESSAGE, EventTypeDTO.TOOL],
     )
     assert len(response.data) == 1
+
+
+#################
+# recording tests
+#################
+
+
+async def test_create_session_no_recording(
+    user: User,
+    agent: Agent,
+    agent_store: AgentStore,
+    session_service: SessionService,
+    recording_store: RecordingStore,
+) -> None:
+    agent = await agent_store.create_agent(
+        name=agent.name, type=agent.type, description=agent.description
+    )
+
+    router = APIRouter()
+
+    # Mount the route and get the inner function to test.
+    create_session_route = mount_create_session_route(router)
+
+    # Create a dummy session creation DTO. Adjust fields as needed.
+    params = SessionCreationParamsDTO(agent_id=agent.id, title="Test session")
+    response = Response()
+    result: SessionDTO = await create_session_route(
+        user, response, params, agent_store, session_service, recording_store, False
+    )
+
+    # should not record
+    rec1_by_sessid = await recording_store.read_header_by_source_session_id(result.id)
+    assert rec1_by_sessid is None
+
+
+async def test_create_session_recording_success(
+    user: User,
+    agent: Agent,
+    agent_store: AgentStore,
+    session_service: SessionService,
+    recording_store: RecordingStore,
+) -> None:
+    agent = await agent_store.create_agent(
+        name=agent.name, type=agent.type, description=agent.description
+    )
+
+    router = APIRouter()
+
+    # Mount the route and get the inner function to test.
+    create_session_route = mount_create_session_route(router)
+
+    # Create a dummy session creation DTO. Adjust fields as needed.
+    params = SessionCreationParamsDTO(agent_id=agent.id, title="Test session", mode="record")
+    response = Response()
+    session = await create_session_route(
+        user, response, params, agent_store, session_service, recording_store, False
+    )
+    assert session.metadata is not None
+    recording_id = session.metadata["recording"]["recording_id"]
+    rec1_by_recid = await recording_store.read_header_by_recording_id(RecordingId(recording_id))
+    rec1_by_sessid = await recording_store.read_header_by_source_session_id(session.id)
+    assert rec1_by_sessid == rec1_by_recid
+
+
+async def test_recorded_events_are_persisted_during_stream(
+    correlator: ContextualCorrelator,
+    user: User,
+    agent: Agent,
+    session: Session,
+    session_store: SessionStore,
+    session_service: SessionService,
+    user_store: UserStore,
+    agent_store: AgentStore,
+    recording_store: RecordingStore,
+    event_emitter: EventEmitter,
+) -> None:
+    # Prepare an agent and create a **recording** session via the API route
+    agent = await agent_store.create_agent(name=agent.name, type=agent.type)
+
+    class MockAgentRunner(AgentRunner):
+        async def run(self, context: Context, deps: Deps) -> bool:
+            # Emit a status, a couple of chunks, then complete
+            await deps.event_emitter.enqueue_status_event(
+                correlation_id=deps.correlator.correlation_id,
+                data=StatusEventData(type="status", status="typing"),
+            )
+
+            eid = EventId("evt-1")
+            chunk1 = ChunkEvent(
+                correlation_id=deps.correlator.correlation_id,
+                event_id=eid,
+                seq=0,
+                patches=[{"op": "add", "path": "/-", "value": "hello"}],
+                metadata={"agent_id": "A1", "agent_name": "STATIC"},
+                timestamp=time.time(),
+            )
+            await deps.event_emitter.enqueue_event_chunk(chunk1)
+
+            # second chunk for same logical stream
+            chunk2 = ChunkEvent(
+                correlation_id=deps.correlator.correlation_id,
+                event_id=eid,
+                seq=1,
+                patches=[{"op": "add", "path": "/-", "value": " world"}],
+                metadata={"agent_id": "A1", "agent_name": "STATIC"},
+                timestamp=time.time(),
+            )
+            await deps.event_emitter.enqueue_event_chunk(chunk2)
+
+            await deps.event_emitter.enqueue_status_event(
+                correlation_id=deps.correlator.correlation_id,
+                data=StatusEventData(type="status", status="completed"),
+            )
+            return True
+
+    # Inject the mock runner
+    from .conftest import MockAgentRunnerFactory
+
+    session_service._agent_runner_factory = MockAgentRunnerFactory(runner_class=MockAgentRunner)
+
+    router = APIRouter()
+    create_session_route = mount_create_session_route(router)
+    create_event_and_stream_route = mount_create_event_and_stream_route(router)
+
+    # Create the session in record mode (capture returned session so we stream into the same one)
+    params = SessionCreationParamsDTO(agent_id=agent.id, title="rec-test", mode="record")
+    resp = Response()
+    created = await create_session_route(
+        user, resp, params, agent_store, session_service, recording_store, False
+    )
+
+    # Kick off a user message that triggers the stream for THIS recorded session
+    ev_params = EventCreationParamsDTO(
+        type=EventTypeDTO.MESSAGE,
+        source=EventSourceDTO.USER,
+        content="ping",
+    )
+    response = await create_event_and_stream_route(
+        user,
+        created.id,
+        ev_params,
+        session_service,
+        session_store,
+        user_store,
+        agent_store,
+        recording_store,
+        event_emitter,
+    )
+
+    assert response.status_code == 200
+    assert isinstance(response, StreamingResponse)
+    # Consume the stream to completion so events are emitted/recorded
+    _ = await consume_streaming_response(response)
+
+    # Lookup the recording header for this session to get its recording_id
+    header = await recording_store.read_header_by_source_session_id(created.id)
+    assert header is not None
+
+    # Fetch recorded frames after the header; ensure statuses and chunks were captured
+    frames = await recording_store.read_frames_range(
+        recording_id=header.recording_id,
+        start_offset_inclusive=1,
+        end_offset_exclusive=None,
+    )
+    assert len(frames) >= 3  # at least typing, two chunks, completed
+
+    kinds = [f.kind for f in frames]
+    assert "chunk" in kinds
+    assert kinds.count("chunk") == 2
+
+    emitted_statuses = [
+        f
+        for f in frames
+        if f.kind == "emitted" and isinstance(f.payload, dict) and f.payload.get("type") == "status"
+    ]
+    assert len(emitted_statuses) >= 1

@@ -9,6 +9,7 @@ from flux0_core.background_tasks_service import BackgroundTaskService
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.ids import gen_id
 from flux0_core.logging import Logger
+from flux0_core.recordings import RecordingStore
 from flux0_core.sessions import (
     Event,
     EventSource,
@@ -16,6 +17,7 @@ from flux0_core.sessions import (
     MessageEventData,
     Session,
     SessionId,
+    SessionMode,
     SessionStore,
     StatusEventData,
     ToolEventData,
@@ -32,6 +34,7 @@ class SessionService:
         logger: Logger,
         agent_store: AgentStore,
         session_store: SessionStore,
+        recording_store: RecordingStore,
         background_task_service: BackgroundTaskService,
         agent_runner_factory: AgentRunnerFactory,
         event_emitter: EventEmitter,
@@ -40,6 +43,7 @@ class SessionService:
         self._logger = logger
         self._agent_store = agent_store
         self._session_store = session_store
+        self._recording_store = recording_store
         self._background_task_service = background_task_service
         self._agent_runner_factory = agent_runner_factory
         self._event_emitter = event_emitter
@@ -51,6 +55,7 @@ class SessionService:
         id: Optional[SessionId] = None,
         title: Optional[str] = None,
         allow_greeting: bool = False,
+        mode: Optional[SessionMode] = None,
         metadata: Optional[Mapping[str, JSONSerializable]] = None,
     ) -> Session:
         session = await self._session_store.create_session(
@@ -59,6 +64,7 @@ class SessionService:
             id=id,
             title=title,
             created_at=datetime.now(timezone.utc),
+            mode=mode,
             metadata=metadata,
         )
 
@@ -145,6 +151,7 @@ class SessionService:
                 event_emitter=self._event_emitter,
                 agent_store=self._agent_store,
                 session_store=self._session_store,
+                recording_store=self._recording_store,
             ),
         )
 

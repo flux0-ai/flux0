@@ -15,9 +15,11 @@ from flux0_core.agents import AgentStore
 from flux0_core.background_tasks_service import BackgroundTaskService
 from flux0_core.contextual_correlator import ContextualCorrelator
 from flux0_core.logging import Logger, LogLevel, StdoutLogger
+from flux0_core.recordings import RecordingStore
 from flux0_core.sessions import SessionStore
 from flux0_core.storage.nanodb_memory import (
     AgentDocumentStore,
+    RecordingDocumentStore,
     SessionDocumentStore,
     UserDocumentStore,
 )
@@ -45,6 +47,9 @@ LOGGER = StdoutLogger(
     correlator=CORRELATOR, log_level=LogLevel.INFO, json=settings.env != EnvType.DEVELOPMENT
 )
 BACKGROUND_TASK_SERVICE: BackgroundTaskService
+INTERNAL_MODULES = [
+    "flux0_server.replay_agent",
+]
 
 
 class StartupError(Exception):
@@ -96,11 +101,13 @@ async def setup_container(
     user_store = await exit_stack.enter_async_context(UserDocumentStore(db))
     agent_store = await exit_stack.enter_async_context(AgentDocumentStore(db))
     session_store = await exit_stack.enter_async_context(SessionDocumentStore(db))
+    recording_store = await exit_stack.enter_async_context(RecordingDocumentStore(db))
     c[SessionService] = SessionService(
         contextual_correlator=CORRELATOR,
         logger=LOGGER,
         agent_store=agent_store,
         session_store=session_store,
+        recording_store=recording_store,
         background_task_service=BACKGROUND_TASK_SERVICE,
         agent_runner_factory=ContainerAgentRunnerFactory(c),
         event_emitter=c[EventEmitter],
@@ -108,6 +115,7 @@ async def setup_container(
     c[UserStore] = user_store
     c[AgentStore] = agent_store
     c[SessionStore] = session_store
+    c[RecordingStore] = recording_store
 
     if settings.auth_type == AuthType.NOOP:
         c[AuthHandler] = NoopAuthHandler(user_store=c[UserStore])
@@ -175,14 +183,15 @@ async def serve_app(
 async def get_module_list_from_config() -> list[str]:
     config_file = Path("flux0.toml")
 
+    modules = []
     if config_file.exists():
         config = toml.load(config_file)
         # Expecting structure of:
         # [flux0]
         # modules = ["module_1", "module_2"]
-        return list(config.get("flux0", {}).get("modules", []))
+        modules = list(config.get("flux0", {}).get("modules", []))
 
-    return []
+    return INTERNAL_MODULES + modules
 
 
 @asynccontextmanager

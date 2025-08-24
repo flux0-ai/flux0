@@ -1,10 +1,28 @@
 import asyncio
 import json
-from typing import Any, AsyncGenerator, Callable, Coroutine, Optional, Sequence, Set, Union, cast
+from datetime import datetime, timezone
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Coroutine,
+    Optional,
+    Sequence,
+    Set,
+    Union,
+    cast,
+)
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 from flux0_core.agents import AgentStore
+from flux0_core.ids import gen_id
+from flux0_core.recordings import (
+    RecordedChunkPayload,
+    RecordedEmittedPayload,
+    RecordedEvent,
+    RecordingStore,
+)
 from flux0_core.sessions import (
     ContentPart,
     Event,
@@ -24,6 +42,7 @@ from flux0_api.common import JSONSerializableDTO, apigen_config, example_json_co
 from flux0_api.dependency_injection import (
     get_agent_store,
     get_event_emitter,
+    get_recording_store,
     get_session_service,
     get_session_store,
     get_user_store,
@@ -60,7 +79,15 @@ API_GROUP = "sessions"
 def mount_create_session_route(
     router: APIRouter,
 ) -> Callable[
-    [AuthedUser, SessionCreationParamsDTO, AgentStore, SessionService, AllowGreetingQuery],
+    [
+        AuthedUser,
+        Response,
+        SessionCreationParamsDTO,
+        AgentStore,
+        SessionService,
+        RecordingStore,
+        AllowGreetingQuery,
+    ],
     Coroutine[Any, Any, SessionDTO],
 ]:
     @router.post(
@@ -87,9 +114,11 @@ def mount_create_session_route(
     )
     async def create_session_route(
         authedUser: AuthedUser,
+        response: Response,
         params: SessionCreationParamsDTO,
         agent_store: AgentStore = Depends(get_agent_store),
         session_service: SessionService = Depends(get_session_service),
+        recording_store: RecordingStore = Depends(get_recording_store),
         allow_greeting: AllowGreetingQuery = False,
     ) -> SessionDTO:
         """
@@ -111,12 +140,22 @@ def mount_create_session_route(
                 detail=f"Agent type {agent.type} is not supported by the server",
             )
 
+        session_id = params.id if params.id else SessionId(gen_id())
+        if params.mode == "record":
+            recorded_event_header = await recording_store.create_recording(
+                source_session_id=session_id,
+            )
+            if params.metadata is None or not isinstance(params.metadata, dict):
+                params.metadata = {}
+            params.metadata["recording"] = {"recording_id": str(recorded_event_header.recording_id)}
+
         session = await session_service.create_user_session(
-            id=params.id,
+            id=session_id,
             user_id=authedUser.id,
             agent=agent,
             title=params.title,
             allow_greeting=allow_greeting,
+            mode=params.mode,
             metadata=params.metadata,
         )
 
@@ -124,6 +163,7 @@ def mount_create_session_route(
             id=session.id,
             agent_id=session.agent_id,
             user_id=session.user_id,
+            mode=session.mode,
             title=session.title,
             consumption_offsets=ConsumptionOffsetsDTO(client=session.consumption_offsets["client"]),
             created_at=session.created_at,
@@ -169,6 +209,7 @@ def mount_retrieve_session_route(
             id=session.id,
             agent_id=session.agent_id,
             user_id=session.user_id,
+            mode=session.mode,
             title=session.title,
             consumption_offsets=ConsumptionOffsetsDTO(
                 client=session.consumption_offsets["client"],
@@ -211,6 +252,7 @@ def mount_list_sessions_route(
             user_id=authedUser.id,
             agent_id=agent_id,
         )
+
         return SessionsDTO(
             data=[
                 SessionDTO(
@@ -218,6 +260,7 @@ def mount_list_sessions_route(
                     agent_id=s.agent_id,
                     title=s.title,
                     user_id=s.user_id,
+                    mode=s.mode,
                     consumption_offsets=ConsumptionOffsetsDTO(
                         client=s.consumption_offsets["client"],
                     ),
@@ -239,6 +282,7 @@ async def event_stream(
     session_service: SessionService,
     event_emitter: EventEmitter,
     subscription_ready: asyncio.Event,
+    recording_store: RecordingStore,
 ) -> AsyncGenerator[str, None]:
     queue: asyncio.Queue[Union[ChunkEvent, EmittedEvent]] = asyncio.Queue()
 
@@ -251,10 +295,32 @@ async def event_stream(
         await queue.put(emitted_event)
 
     # Subscribe to processed event updates
-    print("subscribed to correlation_id", correlation_id)
+    # print("subscribed to correlation_id", correlation_id)
     event_emitter.subscribe_processed(correlation_id, subscriber)
     event_emitter.subscribe_final(correlation_id, subscriber_final)
     subscription_ready.set()
+
+    recording = await recording_store.read_header_by_source_session_id(session_id)
+    recording_id = recording.recording_id if recording else None
+    recording_aborted = False
+
+    async def maybe_record_emitted(payload: RecordedEmittedPayload, created_at: datetime) -> None:
+        nonlocal recording_aborted
+        if not recording_id or recording_aborted:
+            return
+        try:
+            await recording_store.append_emitted(recording_id, payload, created_at=created_at)
+        except Exception:
+            recording_aborted = True  # stop further attempts
+
+    async def maybe_record_chunk(payload: RecordedChunkPayload, created_at: datetime) -> None:
+        nonlocal recording_aborted
+        if not recording_id or recording_aborted:
+            return
+        try:
+            await recording_store.append_chunk(recording_id, payload, created_at=created_at)
+        except Exception:
+            recording_aborted = True
 
     try:
         while True:
@@ -267,6 +333,17 @@ async def event_stream(
                 if event.type == "status":
                     ed = cast(StatusEventData, event.data)
                     if ed["status"] == "completed":
+                        await maybe_record_emitted(
+                            RecordedEmittedPayload(
+                                id=event.id,
+                                source=event.source,
+                                type="status",
+                                correlation_id=event.correlation_id,
+                                data=ed,
+                                metadata=event.metadata or {},
+                            ),
+                            created_at=datetime.fromtimestamp(event.timestamp, tz=timezone.utc),
+                        )
                         break
                     await session_store.create_event(
                         correlation_id=event.correlation_id,
@@ -276,6 +353,18 @@ async def event_stream(
                         data=ed,
                         metadata=event.metadata,
                     )
+                    await maybe_record_emitted(
+                        RecordedEmittedPayload(
+                            id=event.id,
+                            source=event.source,
+                            type="status",
+                            correlation_id=event.correlation_id,
+                            data=ed,
+                            metadata=event.metadata or {},
+                        ),
+                        created_at=datetime.fromtimestamp(event.timestamp, tz=timezone.utc),
+                    )
+
                     yield f"event: {event_type}\nid: {event.id}\ndata: {json.dumps(event.__dict__)}\n\n"
                 elif event.type == "message":
                     event_type = event.type
@@ -306,13 +395,23 @@ async def event_stream(
             else:
                 # this is a chunk event
                 event_type = "chunk"
+                await maybe_record_chunk(
+                    RecordedChunkPayload(
+                        correlation_id=event.correlation_id,
+                        event_id=event.event_id,
+                        seq=event.seq,
+                        patches=event.patches,
+                        metadata=event.metadata or {},
+                    ),
+                    created_at=datetime.fromtimestamp(event.timestamp, tz=timezone.utc),
+                )
                 yield f"event: {event_type}\ndata: {json.dumps(event.__dict__)}\n\n"
     except asyncio.CancelledError:
         await session_service.cancel_processing_session_task(session_id)
         return
     finally:
         # Unsubscribe when client disconnects
-        print("unsubscribed from correlation_id", correlation_id)
+        # print("unsubscribed from correlation_id", correlation_id)
         event_emitter.unsubscribe_processed(correlation_id, subscriber)
         event_emitter.unsubscribe_final(correlation_id, subscriber_final)
         # Explicitly send a termination event before closing
@@ -340,6 +439,8 @@ async def _add_user_message(
     agent_store: AgentStore,
     session_store: SessionStore,
     session_service: SessionService,
+    rec_header: Optional[RecordedEvent],
+    recording_store: RecordingStore,
     # moderation: Moderation = Moderation.NONE,
     subscription_ready: asyncio.Event,
 ) -> EventDTO:
@@ -400,6 +501,19 @@ async def _add_user_message(
         wait_event=subscription_ready,
     )
 
+    if rec_header:
+        await recording_store.append_emitted(
+            recording_id=rec_header.recording_id,
+            payload=RecordedEmittedPayload(
+                id=event.id,
+                source=event.source,
+                type=event.type,
+                correlation_id=event.correlation_id,
+                data=event.data,
+                metadata=event.metadata or {},
+            ),
+        )
+
     return event_to_dto(event)
 
 
@@ -414,6 +528,7 @@ def mount_create_event_and_stream_route(
         SessionStore,
         UserStore,
         AgentStore,
+        RecordingStore,
         EventEmitter,
     ],
     Coroutine[Any, Any, StreamingResponse],
@@ -475,6 +590,7 @@ def mount_create_event_and_stream_route(
         session_store: SessionStore = Depends(get_session_store),
         user_store: UserStore = Depends(get_user_store),
         agent_store: AgentStore = Depends(get_agent_store),
+        recording_store: RecordingStore = Depends(get_recording_store),
         event_emitter: EventEmitter = Depends(get_event_emitter),
         # moderation: ModerationQuery = Moderation.NONE,
     ) -> StreamingResponse:
@@ -488,6 +604,7 @@ def mount_create_event_and_stream_route(
                 detail="Only message events can currently be added manually",
             )
 
+        rec_header = await recording_store.read_header_by_source_session_id(session_id)
         subscription_ready = asyncio.Event()
         if params.source == EventSourceDTO.USER:
             event = await _add_user_message(
@@ -497,9 +614,12 @@ def mount_create_event_and_stream_route(
                 agent_store,
                 session_store,
                 session_service,
+                rec_header,
+                recording_store,
                 # moderation,
                 subscription_ready,
             )
+
             return StreamingResponse(
                 event_stream(
                     session_id,
@@ -508,6 +628,7 @@ def mount_create_event_and_stream_route(
                     session_service,
                     event_emitter,
                     subscription_ready,
+                    recording_store,
                 ),
                 media_type="text/event-stream",
             )
