@@ -631,6 +631,11 @@ def mount_create_event_and_stream_route(
                     recording_store,
                 ),
                 media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache, no-transform",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
             )
         # elif params.source == EventSourceDTO.AI_AGENT:
         #     return await _add_agent_message(session_id, params)
