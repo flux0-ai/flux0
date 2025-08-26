@@ -109,6 +109,7 @@ def mount_create_session_route(
             status.HTTP_422_UNPROCESSABLE_ENTITY: {
                 "description": "Validation error in request parameters"
             },
+            status.HTTP_409_CONFLICT: {"description": "Session with the same ID already exists"},
         },
         **apigen_config(group_name=API_GROUP, method_name="create"),
     )
