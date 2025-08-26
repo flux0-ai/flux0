@@ -117,7 +117,7 @@ function PureMultimodalInput({
     }
 
     // navigate({ to: '/session/$sessionId', params: { sessionId: sessionIdToRedir } });
-    window.history.replaceState({}, "", `/chat/session/${sessionId}`);
+    // window.history.replaceState({}, "", `/chat/session/${sessionId}`);
 
     handleSubmit(undefined);
     setLocalStorageInput("");
