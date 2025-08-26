@@ -14,6 +14,7 @@ from typing import (
     override,
 )
 
+from fastapi import HTTPException
 from flux0_core.agents import Agent, AgentId, AgentStore, AgentType, AgentUpdateParams
 from flux0_core.ids import gen_id
 from flux0_core.recordings import (
@@ -394,6 +395,12 @@ class SessionDocumentStore(SessionStore):
         metadata: Optional[Mapping[str, JSONSerializable]] = None,
         created_at: Optional[datetime] = None,
     ) -> Session:
+        # if id set, ensure session with the same id not exists
+        if id:
+            existing = await self.read_session(id)
+            if existing:
+                raise HTTPException(status_code=409, detail=f"Session with id {id} already exists")
+
         created_at = created_at or datetime.now(timezone.utc)
         consumption_offsets: dict[ConsumerId, int] = {"client": 0}
         session = Session(
