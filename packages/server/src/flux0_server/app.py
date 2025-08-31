@@ -48,7 +48,7 @@ def static_path() -> str:
     return static_dir
 
 
-async def create_api_app(c: Container) -> ASGIApp:
+async def create_api_app(c: Container, module_routers: list[APIRouter] | None = None) -> ASGIApp:
     logger = c[Logger]
     correlator = c[ContextualCorrelator]
 
@@ -112,6 +112,18 @@ async def create_api_app(c: Container) -> ASGIApp:
     mount_create_event_and_stream_route(api_sessions_router)
     mount_list_session_events_route(api_sessions_router)
     api_router.include_router(api_sessions_router)
+
+    # Register module routers under /modules prefix
+    if module_routers:
+        api_modules_router = APIRouter(prefix="/modules")
+        for router in module_routers:
+            try:
+                logger.info(f"Registering module router with prefix: /modules{router.prefix}")
+                api_modules_router.include_router(router)
+            except Exception as e:
+                logger.error(f"Failed to register module router: {e}")
+                raise
+        api_router.include_router(api_modules_router)
 
     api_app.include_router(api_router)
 
