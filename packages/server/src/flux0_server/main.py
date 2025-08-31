@@ -9,6 +9,7 @@ from typing import AsyncIterator, Iterable
 
 import toml
 import uvicorn
+from fastapi import APIRouter
 from flux0_api.auth import AuthHandler, AuthType, NoopAuthHandler
 from flux0_api.session_service import SessionService
 from flux0_core.agents import AgentStore
@@ -129,13 +130,16 @@ async def setup_container(
 async def load_modules(
     container: Container,
     modules: Iterable[str],
-) -> AsyncIterator[None]:
+) -> AsyncIterator[list[APIRouter]]:
     imported_modules = []
+    module_routers = []
 
     for module_path in modules:
         print("Current Working Directory:", os.getcwd())
         module = importlib.import_module(module_path)
-        if not hasattr(module, "init_module") or not hasattr(module, "shutdown_module"):
+        required_attrs = ["init_module", "shutdown_module"]
+
+        if not all(hasattr(module, attr) for attr in required_attrs):
             raise StartupError(
                 f"Module '{module.__name__}' must define init_module(container: lagom.Container) and shutdown_module()"
             )
@@ -145,8 +149,17 @@ async def load_modules(
         LOGGER.info(f"Initializing module '{m.__name__}'")
         await m.init_module(container)
 
+        # Get routers from module if it provides them
+        if hasattr(m, "get_routers"):
+            LOGGER.info(f"Getting routers from module '{m.__name__}'")
+            routers = m.get_routers(container)
+            if routers:
+                if not isinstance(routers, list):
+                    routers = [routers]  # Allow single router or list
+                module_routers.extend(routers)
+
     try:
-        yield
+        yield module_routers
     finally:
         for m in reversed(imported_modules):
             LOGGER.info(f"Shutting down module '{m.__name__}'")
@@ -203,11 +216,14 @@ async def setup_app(settings: Settings) -> AsyncIterator[ASGIApp]:
         exit_stack,
     ):
         modules = set(await get_module_list_from_config() + settings.modules)
+        module_routers = []
         if modules:
-            await exit_stack.enter_async_context(load_modules(container, modules))
+            module_routers = await exit_stack.enter_async_context(load_modules(container, modules))
         else:
             LOGGER.debug("No external modules defined")
-        yield await create_api_app(container)
+
+        # Pass the module routers to create_api_app
+        yield await create_api_app(container, module_routers)
 
 
 async def start_server(settings: Settings) -> None:
