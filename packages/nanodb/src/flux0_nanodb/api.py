@@ -95,3 +95,44 @@ class DocumentCollection(ABC, Generic[TDocument]):
         Delete the first document that matches the provided filters.
         """
         pass
+
+
+class ScopedDocumentDatabase(DocumentDatabase):
+    """
+    A DocumentDatabase wrapper that prefixes all collection names with a scope.
+    This provides namespace isolation for different modules or contexts.
+    """
+
+    def __init__(self, underlying_db: DocumentDatabase, scope: str):
+        """
+        Initialize a scoped database.
+
+        Args:
+            underlying_db: The actual database implementation
+            scope: The scope prefix (e.g., "module_mymodule")
+        """
+        self._underlying_db = underlying_db
+        self._scope = scope
+
+    def _scoped_name(self, name: str) -> str:
+        """Generate a scoped collection name"""
+        return f"{self._scope}_{name}"
+
+    async def create_collection(
+        self, name: str, schema: Type[TDocument]
+    ) -> DocumentCollection[TDocument]:
+        """Create a collection with scoped name"""
+        scoped_name = self._scoped_name(name)
+        return await self._underlying_db.create_collection(scoped_name, schema)
+
+    async def get_collection(
+        self, name: str, schema: Type[TDocument]
+    ) -> DocumentCollection[TDocument]:
+        """Get a collection with scoped name"""
+        scoped_name = self._scoped_name(name)
+        return await self._underlying_db.get_collection(scoped_name, schema)
+
+    async def delete_collection(self, name: str) -> None:
+        """Delete a collection with scoped name"""
+        scoped_name = self._scoped_name(name)
+        await self._underlying_db.delete_collection(scoped_name)
