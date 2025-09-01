@@ -26,7 +26,7 @@ from flux0_core.storage.nanodb_memory import (
 )
 from flux0_core.storage.types import NanoDBStorageType, StorageType
 from flux0_core.users import UserStore
-from flux0_nanodb.api import DocumentDatabase
+from flux0_nanodb.api import DocumentDatabase, ScopedDocumentDatabase
 from flux0_nanodb.json import JsonDocumentDatabase
 from flux0_nanodb.memory import MemoryDocumentDatabase
 from flux0_nanodb.mongodb import MongoDocumentDatabase, create_client
@@ -118,6 +118,8 @@ async def setup_container(
     c[SessionStore] = session_store
     c[RecordingStore] = recording_store
 
+    c[DocumentDatabase] = ScopedDocumentDatabase(db, scope="modules")
+
     if settings.auth_type == AuthType.NOOP:
         c[AuthHandler] = NoopAuthHandler(user_store=c[UserStore])
     else:
@@ -152,7 +154,7 @@ async def load_modules(
         # Get routers from module if it provides them
         if hasattr(m, "get_routers"):
             LOGGER.info(f"Getting routers from module '{m.__name__}'")
-            routers = m.get_routers(container)
+            routers = await m.get_routers(container)
             if routers:
                 if not isinstance(routers, list):
                     routers = [routers]  # Allow single router or list
